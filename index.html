@@ -1,657 +1,886 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auto ML Crypto Bot - Railway Ready</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --g: #00ff88;
-      --r: #ff3366;
-      --b: #00d4ff;
-      --p: #a855f7;
-    }
-    * { font-family: 'JetBrains Mono', monospace; }
-    .title { font-family: 'Orbitron', sans-serif; }
-    body { background: linear-gradient(180deg, #0a0a0f 0%, #0d0d14 100%); min-height: 100vh; }
-
-    .card {
-      background: rgba(12,12,18,0.9);
-      border: 1px solid rgba(0,255,136,0.1);
-      border-radius: 10px;
-    }
-
-    .live-dot {
-      animation: blink 1s infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    .glow { text-shadow: 0 0 20px currentColor; }
-
-    .long-bg { background: linear-gradient(90deg, rgba(0,255,136,0.2), transparent); border-left: 3px solid var(--g); }
-    .short-bg { background: linear-gradient(90deg, rgba(255,51,102,0.2), transparent); border-left: 3px solid var(--r); }
-
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-
-    .obi-bar {
-      height: 8px;
-      border-radius: 4px;
-      background: linear-gradient(90deg, var(--r), #222 50%, var(--g));
-    }
-    .obi-marker {
-      width: 3px;
-      height: 14px;
-      background: #fff;
-      border-radius: 2px;
-      box-shadow: 0 0 6px #fff;
-    }
-
-    .profit { color: var(--g); }
-    .loss { color: var(--r); }
-  </style>
-</head>
-<body class="text-white p-2 md:p-4">
-  <!-- Header -->
-  <header class="flex flex-wrap items-center justify-between gap-2 mb-3">
-    <div class="flex items-center gap-2">
-      <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-cyan-500 flex items-center justify-center text-xl">⚡</div>
-      <div>
-        <h1 class="text-lg md:text-xl font-bold title text-cyan-400 glow">AUTO TRADER</h1>
-        <p class="text-[10px] text-gray-500">OBI + VWAP | Railway Ready | Persistent</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <div class="flex items-center gap-1.5">
-        <span class="live-dot w-2.5 h-2.5 rounded-full bg-green-500"></span>
-        <span class="text-xs text-green-400" id="status">CONNECTING...</span>
-      </div>
-      <button onclick="resetBot()" class="text-xs px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-400">RESET</button>
-    </div>
-  </header>
-
-  <!-- Stats -->
-  <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-3">
-    <div class="card p-2">
-      <p class="text-[10px] text-gray-500 uppercase">Balance</p>
-      <p class="text-sm font-bold" id="balance">$100.00</p>
-    </div>
-    <div class="card p-2">
-      <p class="text-[10px] text-gray-500 uppercase">P&L</p>
-      <p class="text-sm font-bold" id="pnl">$0.00</p>
-    </div>
-    <div class="card p-2">
-      <p class="text-[10px] text-gray-500 uppercase">Positions</p>
-      <p class="text-sm font-bold text-blue-400" id="positions">0</p>
-    </div>
-    <div class="card p-2">
-      <p class="text-[10px] text-gray-500 uppercase">Trades</p>
-      <p class="text-sm font-bold text-purple-400" id="trades">0</p>
-    </div>
-    <div class="card p-2">
-      <p class="text-[10px] text-gray-500 uppercase">Win Rate</p>
-      <p class="text-sm font-bold text-yellow-400" id="winrate">0%</p>
-    </div>
-    <div class="card p-2">
-      <p class="text-[10px] text-gray-500 uppercase">Uptime</p>
-      <p class="text-sm font-bold text-gray-400" id="uptime">0:00</p>
-    </div>
-  </div>
-
-  <!-- Main -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-    <!-- Market -->
-    <div class="lg:col-span-2 card p-2">
-      <div class="flex justify-between items-center mb-2">
-        <h2 class="text-xs font-bold">📊 TOP 10 CRYPTO</h2>
-        <span class="text-[10px] text-gray-500" id="lastUpdate">--</span>
-      </div>
-      <div class="overflow-auto max-h-64">
-        <table class="w-full text-[11px]">
-          <thead class="sticky top-0 bg-[#0c0c12]">
-            <tr class="text-gray-500 border-b border-gray-800">
-              <th class="text-left py-1.5 px-1">PAIR</th>
-              <th class="text-right px-1">PRICE</th>
-              <th class="text-center px-1">OBI</th>
-              <th class="text-center px-1">VWAP%</th>
-              <th class="text-center px-1">SIGNAL</th>
-            </tr>
-          </thead>
-          <tbody id="marketTable"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Right -->
-    <div class="space-y-3">
-      <div class="card p-2">
-        <h2 class="text-xs font-bold mb-2">📈 POSITIONS</h2>
-        <div id="positionsList" class="space-y-1 max-h-24 overflow-auto text-[11px]">
-          <p class="text-gray-600 text-center py-2">No positions</p>
-        </div>
-      </div>
-      <div class="card p-2">
-        <h2 class="text-xs font-bold mb-2">🎯 SIGNALS</h2>
-        <div id="signalsList" class="space-y-1 max-h-24 overflow-auto text-[11px]">
-          <p class="text-gray-600 text-center py-2">Waiting...</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Chart & History -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-    <div class="card p-2">
-      <h2 class="text-xs font-bold mb-1">💰 EQUITY</h2>
-      <canvas id="chart" height="100"></canvas>
-    </div>
-    <div class="card p-2">
-      <h2 class="text-xs font-bold mb-1">📜 HISTORY</h2>
-      <div id="history" class="space-y-1 max-h-28 overflow-auto text-[10px]">
-        <p class="text-gray-600 text-center py-3">No trades</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Config -->
-  <div class="card p-2 mt-3">
-    <div class="grid grid-cols-4 md:grid-cols-8 gap-2 text-[10px]">
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">OBI</p>
-        <p class="font-bold text-cyan-400">±5%</p>
-      </div>
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">VWAP</p>
-        <p class="font-bold text-purple-400">±0.1%</p>
-      </div>
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">TP</p>
-        <p class="font-bold text-green-400">+0.5%</p>
-      </div>
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">SL</p>
-        <p class="font-bold text-red-400">-0.35%</p>
-      </div>
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">Size</p>
-        <p class="font-bold text-blue-400">12%</p>
-      </div>
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">Max Pos</p>
-        <p class="font-bold text-yellow-400">5</p>
-      </div>
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">Speed</p>
-        <p class="font-bold text-orange-400">400ms</p>
-      </div>
-      <div class="bg-black/40 rounded p-1.5 text-center">
-        <p class="text-gray-500">Mode</p>
-        <p class="font-bold text-green-400">AUTO</p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // ===== CONFIG - SUPER AGGRESSIVE =====
-    const CFG = {
-      balance: 100,
-      symbols: ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','LINKUSDT','DOTUSDT'],
-      obiThreshold: 0.05,      // 5% - very loose
-      vwapDeviation: 0.001,    // 0.1% - very loose
-      takeProfit: 0.005,       // 0.5% TP - fast close
-      stopLoss: 0.0035,        // 0.35% SL - tight
-      positionSize: 0.12,      // 12% per trade
-      maxPositions: 5,
-      updateMs: 400            // 400ms updates
-    };
-
-    // ===== STATE WITH PERSISTENCE =====
-    let S = loadState() || {
-      balance: CFG.balance,
-      startBalance: CFG.balance,
-      positions: [],
-      trades: [],
-      signals: [],
-      equity: [{t:Date.now(),v:CFG.balance}],
-      startTime: Date.now()
-    };
-
-    let market = {};
-    let indicators = {};
-
-    // ===== PERSISTENCE via URL HASH =====
-    function saveState() {
-      try {
-        const data = {
-          b: Math.round(S.balance * 100) / 100,
-          sb: S.startBalance,
-          p: S.positions.map(p => ({
-            id: p.id, s: p.symbol, t: p.type, e: p.entry, q: p.qty, sz: p.size, tp: p.tp, sl: p.sl
-          })),
-          tr: S.trades.slice(-50).map(t => ({
-            s: t.symbol, t: t.type, pnl: Math.round(t.pnl * 100) / 100, r: t.reason
-          })),
-          st: S.startTime
-        };
-        const encoded = btoa(JSON.stringify(data));
-        history.replaceState(null, '', '#' + encoded);
-      } catch(e) {}
-    }
-
-    function loadState() {
-      try {
-        const hash = window.location.hash.slice(1);
-        if (!hash) return null;
-        const data = JSON.parse(atob(hash));
-        return {
-          balance: data.b,
-          startBalance: data.sb,
-          positions: data.p.map(p => ({
-            id: p.id, symbol: p.s, type: p.t, entry: p.e, qty: p.q, size: p.sz, tp: p.tp, sl: p.sl
-          })),
-          trades: data.tr.map(t => ({
-            symbol: t.s, type: t.t, pnl: t.pnl, reason: t.r, time: Date.now()
-          })),
-          signals: [],
-          equity: [{t:Date.now(), v:data.b}],
-          startTime: data.st || Date.now()
-        };
-      } catch(e) {
-        return null;
-      }
-    }
-
-    function resetBot() {
-      if (!window.confirm) {
-        // Custom confirm for iframe
-        S = {
-          balance: CFG.balance,
-          startBalance: CFG.balance,
-          positions: [],
-          trades: [],
-          signals: [],
-          equity: [{t:Date.now(),v:CFG.balance}],
-          startTime: Date.now()
-        };
-        history.replaceState(null, '', window.location.pathname);
-        updateUI();
-        return;
-      }
-      S = {
-        balance: CFG.balance,
-        startBalance: CFG.balance,
-        positions: [],
-        trades: [],
-        signals: [],
-        equity: [{t:Date.now(),v:CFG.balance}],
-        startTime: Date.now()
-      };
-      history.replaceState(null, '', window.location.pathname);
-      updateUI();
-    }
-
-    // ===== DOM =====
-    const el = {
-      status: document.getElementById('status'),
-      balance: document.getElementById('balance'),
-      pnl: document.getElementById('pnl'),
-      positions: document.getElementById('positions'),
-      trades: document.getElementById('trades'),
-      winrate: document.getElementById('winrate'),
-      uptime: document.getElementById('uptime'),
-      lastUpdate: document.getElementById('lastUpdate'),
-      marketTable: document.getElementById('marketTable'),
-      positionsList: document.getElementById('positionsList'),
-      signalsList: document.getElementById('signalsList'),
-      history: document.getElementById('history')
-    };
-
-    // ===== CHART =====
-    const chart = new Chart(document.getElementById('chart').getContext('2d'), {
-      type: 'line',
-      data: { labels: [], datasets: [{ data: [], borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#555', font: { size: 9 }, callback: v => '$' + v.toFixed(0) } } }, animation: false }
-    });
-
-    // ===== BINANCE DATA =====
-    async function fetchData() {
-      try {
-        // Ticker data
-        const tickerRes = await fetch('https://api.binance.com/api/v3/ticker/24hr');
-        if (!tickerRes.ok) throw new Error('API Error');
-        const tickers = await tickerRes.json();
-
-        // Klines for VWAP calculation
-        const klinePromises = CFG.symbols.map(async sym => {
-          try {
-            const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1m&limit=20`);
-            return { sym, data: await res.json() };
-          } catch { return null; }
-        });
-
-        // Order book for OBI
-        const depthPromises = CFG.symbols.map(async sym => {
-          try {
-            const res = await fetch(`https://api.binance.com/api/v3/depth?symbol=${sym}&limit=10`);
-            return { sym, data: await res.json() };
-          } catch { return null; }
-        });
-
-        const [klines, depths] = await Promise.all([
-          Promise.all(klinePromises),
-          Promise.all(depthPromises)
-        ]);
-
-        CFG.symbols.forEach(sym => {
-          const ticker = tickers.find(t => t.symbol === sym);
-          if (ticker) {
-            market[sym] = {
-              price: parseFloat(ticker.lastPrice),
-              change: parseFloat(ticker.priceChangePercent),
-              high: parseFloat(ticker.highPrice),
-              low: parseFloat(ticker.lowPrice),
-              vol: parseFloat(ticker.quoteVolume)
-            };
-          }
-        });
-
-        // Calculate OBI
-        depths.forEach(d => {
-          if (d && d.data && d.data.bids && d.data.asks) {
-            const bidVol = d.data.bids.reduce((s, [_, q]) => s + parseFloat(q), 0);
-            const askVol = d.data.asks.reduce((s, [_, q]) => s + parseFloat(q), 0);
-            const total = bidVol + askVol;
-            indicators[d.sym] = indicators[d.sym] || {};
-            indicators[d.sym].obi = total > 0 ? (bidVol - askVol) / total : 0;
-          }
-        });
-
-        // Calculate VWAP
-        klines.forEach(k => {
-          if (k && k.data && k.data.length >= 5) {
-            let cumTPV = 0, cumVol = 0;
-            k.data.forEach(c => {
-              const tp = (parseFloat(c[2]) + parseFloat(c[3]) + parseFloat(c[4])) / 3;
-              const vol = parseFloat(c[5]);
-              cumTPV += tp * vol;
-              cumVol += vol;
-            });
-            const vwap = cumVol > 0 ? cumTPV / cumVol : market[k.sym]?.price || 0;
-            indicators[k.sym] = indicators[k.sym] || {};
-            indicators[k.sym].vwap = vwap;
-            if (market[k.sym]) {
-              indicators[k.sym].vwapDiff = (market[k.sym].price - vwap) / vwap;
-            }
-          }
-        });
-
-        el.status.textContent = 'LIVE';
-        el.status.className = 'text-xs text-green-400';
-        el.lastUpdate.textContent = new Date().toLocaleTimeString();
-        return true;
-      } catch (err) {
-        console.error('Fetch error:', err);
-        el.status.textContent = 'RETRY...';
-        el.status.className = 'text-xs text-yellow-400';
-        return false;
-      }
-    }
-
-    // ===== TRADING LOGIC =====
-    function trade() {
-      CFG.symbols.forEach(sym => {
-        const m = market[sym];
-        const ind = indicators[sym];
-        if (!m || !ind) return;
-
-        const hasPos = S.positions.find(p => p.symbol === sym);
-        if (hasPos || S.positions.length >= CFG.maxPositions) return;
-
-        const obi = ind.obi || 0;
-        const vwapDiff = ind.vwapDiff || 0;
-
-        let signal = null;
-
-        // LONG: OBI positive (buyers) + price below VWAP
-        if (obi > CFG.obiThreshold && vwapDiff < -CFG.vwapDeviation) {
-          signal = { type: 'LONG', sym, price: m.price, obi, vwapDiff };
-        }
-        // SHORT: OBI negative (sellers) + price above VWAP
-        else if (obi < -CFG.obiThreshold && vwapDiff > CFG.vwapDeviation) {
-          signal = { type: 'SHORT', sym, price: m.price, obi, vwapDiff };
-        }
-
-        if (signal) openPosition(signal);
-      });
-
-      checkPositions();
-    }
-
-    function openPosition(sig) {
-      const size = S.balance * CFG.positionSize;
-      if (size < 0.5) return;
-
-      const qty = size / sig.price;
-      const isLong = sig.type === 'LONG';
-
-      S.positions.push({
-        id: Date.now(),
-        symbol: sig.sym,
-        type: sig.type,
-        entry: sig.price,
-        qty,
-        size,
-        tp: isLong ? sig.price * (1 + CFG.takeProfit) : sig.price * (1 - CFG.takeProfit),
-        sl: isLong ? sig.price * (1 - CFG.stopLoss) : sig.price * (1 + CFG.stopLoss)
-      });
-
-      S.balance -= size;
-
-      S.signals.unshift({ type: sig.type, symbol: sig.sym, price: sig.price, action: 'OPEN', time: Date.now() });
-      if (S.signals.length > 15) S.signals.pop();
-
-      saveState();
-    }
-
-    function checkPositions() {
-      const closed = [];
-
-      S.positions.forEach(pos => {
-        const m = market[pos.symbol];
-        if (!m) return;
-
-        const price = m.price;
-        const isLong = pos.type === 'LONG';
-        let close = false, reason = '';
-
-        if (isLong) {
-          if (price >= pos.tp) { close = true; reason = 'TP'; }
-          else if (price <= pos.sl) { close = true; reason = 'SL'; }
-        } else {
-          if (price <= pos.tp) { close = true; reason = 'TP'; }
-          else if (price >= pos.sl) { close = true; reason = 'SL'; }
-        }
-
-        if (close) {
-          const pnl = isLong ? (price - pos.entry) * pos.qty : (pos.entry - price) * pos.qty;
-          S.balance += pos.size + pnl;
-
-          S.trades.push({ symbol: pos.symbol, type: pos.type, entry: pos.entry, exit: price, pnl, pnlPct: (pnl/pos.size)*100, reason, time: Date.now() });
-
-          S.signals.unshift({ type: 'CLOSE', symbol: pos.symbol, price, pnl, reason, time: Date.now() });
-          if (S.signals.length > 15) S.signals.pop();
-
-          closed.push(pos.id);
-        }
-      });
-
-      if (closed.length > 0) {
-        S.positions = S.positions.filter(p => !closed.includes(p.id));
-        saveState();
-      }
-    }
-
-    // ===== UI =====
-    function updateUI() {
-      // Calculate values
-      const posValue = S.positions.reduce((sum, p) => {
-        const m = market[p.symbol];
-        return sum + (m ? p.qty * m.price : p.size);
-      }, 0);
-      const total = S.balance + posValue;
-      const pnl = total - S.startBalance;
-      const pnlPct = (pnl / S.startBalance) * 100;
-      const wins = S.trades.filter(t => t.pnl > 0).length;
-      const wr = S.trades.length > 0 ? Math.round(wins / S.trades.length * 100) : 0;
-
-      // Uptime
-      const upSec = Math.floor((Date.now() - S.startTime) / 1000);
-      const upMin = Math.floor(upSec / 60);
-      const upHr = Math.floor(upMin / 60);
-      const upStr = upHr > 0 ? `${upHr}h ${upMin%60}m` : `${upMin}:${String(upSec%60).padStart(2,'0')}`;
-
-      // Stats
-      el.balance.textContent = '$' + total.toFixed(2);
-      el.balance.className = 'text-sm font-bold ' + (pnl >= 0 ? 'profit' : 'loss');
-      el.pnl.textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2);
-      el.pnl.className = 'text-sm font-bold ' + (pnl >= 0 ? 'profit' : 'loss');
-      el.positions.textContent = S.positions.length;
-      el.trades.textContent = S.trades.length;
-      el.winrate.textContent = wr + '%';
-      el.uptime.textContent = upStr;
-
-      // Market table
-      let rows = '';
-      CFG.symbols.forEach(sym => {
-        const m = market[sym];
-        const ind = indicators[sym] || {};
-        if (!m) return;
-
-        const obi = ind.obi || 0;
-        const vwapDiff = (ind.vwapDiff || 0) * 100;
-        const hasPos = S.positions.find(p => p.symbol === sym);
-        const obiPos = 50 + obi * 50;
-
-        let sig = '';
-        if (obi > CFG.obiThreshold && vwapDiff < -CFG.vwapDeviation * 100) {
-          sig = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-500/30 text-green-400">LONG</span>';
-        } else if (obi < -CFG.obiThreshold && vwapDiff > CFG.vwapDeviation * 100) {
-          sig = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/30 text-red-400">SHORT</span>';
-        }
-
-        rows += `
-          <tr class="border-b border-gray-800/30 hover:bg-white/5">
-            <td class="py-1 px-1">
-              <span class="font-bold">${sym.replace('USDT','')}</span>
-              ${hasPos ? '<span class="ml-1 text-blue-400">●</span>' : ''}
-            </td>
-            <td class="text-right px-1 ${m.change >= 0 ? 'profit' : 'loss'}">$${m.price > 100 ? m.price.toFixed(1) : m.price.toFixed(4)}</td>
-            <td class="px-1">
-              <div class="relative w-12 h-2 mx-auto">
-                <div class="obi-bar absolute inset-0"></div>
-                <div class="obi-marker absolute top-[-3px]" style="left:${obiPos}%;transform:translateX(-50%)"></div>
-              </div>
-            </td>
-            <td class="text-center px-1 ${vwapDiff > 0 ? 'loss' : 'profit'}">${vwapDiff > 0 ? '+' : ''}${vwapDiff.toFixed(2)}%</td>
-            <td class="text-center px-1">${sig || '<span class="text-gray-700">—</span>'}</td>
-          </tr>
-        `;
-      });
-      el.marketTable.innerHTML = rows || '<tr><td colspan="5" class="text-center py-4 text-gray-600">Loading...</td></tr>';
-
-      // Positions
-      if (S.positions.length === 0) {
-        el.positionsList.innerHTML = '<p class="text-gray-600 text-center py-2">No positions</p>';
-      } else {
-        el.positionsList.innerHTML = S.positions.map(p => {
-          const m = market[p.symbol];
-          const curr = m ? m.price : p.entry;
-          const pnl = p.type === 'LONG' ? (curr - p.entry) * p.qty : (p.entry - curr) * p.qty;
-          const pnlPct = (pnl / p.size) * 100;
-          return `
-            <div class="p-1.5 rounded ${pnl >= 0 ? 'long-bg' : 'short-bg'}">
-              <div class="flex justify-between">
-                <span class="font-bold">${p.symbol.replace('USDT','')} <span class="${p.type==='LONG'?'profit':'loss'}">${p.type}</span></span>
-                <span class="${pnl >= 0 ? 'profit' : 'loss'}">${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      // Signals
-      if (S.signals.length === 0) {
-        el.signalsList.innerHTML = '<p class="text-gray-600 text-center py-2">Waiting...</p>';
-      } else {
-        el.signalsList.innerHTML = S.signals.slice(0, 5).map(s => {
-          const isLong = s.type === 'LONG';
-          const isClose = s.type === 'CLOSE';
-          return `
-            <div class="p-1 rounded ${isClose ? (s.pnl >= 0 ? 'long-bg' : 'short-bg') : (isLong ? 'long-bg' : 'short-bg')}">
-              <div class="flex justify-between">
-                <span class="font-bold">${s.symbol.replace('USDT','')} ${s.type}</span>
-                ${s.pnl !== undefined ? `<span class="${s.pnl >= 0 ? 'profit' : 'loss'}">${s.pnl >= 0 ? '+' : ''}$${s.pnl.toFixed(2)}</span>` : ''}
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      // History
-      if (S.trades.length === 0) {
-        el.history.innerHTML = '<p class="text-gray-600 text-center py-3">No trades</p>';
-      } else {
-        el.history.innerHTML = S.trades.slice(-15).reverse().map(t => `
-          <div class="flex justify-between p-1 rounded bg-black/30">
-            <span>${t.symbol.replace('USDT','')} ${t.type}</span>
-            <span class="${t.pnl >= 0 ? 'profit' : 'loss'}">${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)} ${t.reason}</span>
-          </div>
-        `).join('');
-      }
-
-      // Chart
-      S.equity.push({ t: Date.now(), v: total });
-      if (S.equity.length > 100) S.equity.shift();
-
-      chart.data.labels = S.equity.map(() => '');
-      chart.data.datasets[0].data = S.equity.map(e => e.v);
-      chart.data.datasets[0].borderColor = pnl >= 0 ? '#00ff88' : '#ff3366';
-      chart.data.datasets[0].backgroundColor = pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,51,102,0.1)';
-      chart.update('none');
-    }
-
-    // ===== MAIN LOOP =====
-    async function loop() {
-      const ok = await fetchData();
-      if (ok) {
-        trade();
-        updateUI();
-      }
-    }
-
-    // ===== AUTO START =====
-    (async function init() {
-      console.log('🚀 Auto Trader Starting...');
-      console.log('📊 Loaded state:', S.balance, 'trades:', S.trades.length);
-
-      await fetchData();
-      updateUI();
-
-      // Fast loop - AUTO running
-      setInterval(loop, CFG.updateMs);
-
-      // Save state periodically
-      setInterval(saveState, 5000);
-    })();
-  </script>
-</body>
-</html>
++   1 <!DOCTYPE html>
++   2 <html lang="en">
++   3 <head>
++   4   <meta charset="UTF-8">
++   5   <meta name="viewport" content="width=device-width, initial-scale=1.0">
++   6   <title>ULTIMATE HFT 2026 - Neural Trading Engine</title>
++   7   <script src="https://cdn.tailwindcss.com"></script>
++   8   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
++   9   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
++  10   <style>
++  11     :root {
++  12       --g: #00ff88; --r: #ff2d55; --b: #00d4ff; --p: #bf5af2; --y: #ffd60a; --o: #ff9500;
++  13     }
++  14     * { font-family: 'Share Tech Mono', monospace; }
++  15     .title { font-family: 'Orbitron', sans-serif; }
++  16     body {
++  17       background: radial-gradient(ellipse at top, #0d1117 0%, #010409 50%, #000 100%);
++  18       min-height: 100vh;
++  19     }
++  20 
++  21     .glass {
++  22       background: rgba(13, 17, 23, 0.85);
++  23       border: 1px solid rgba(0, 255, 136, 0.15);
++  24       border-radius: 8px;
++  25       backdrop-filter: blur(12px);
++  26     }
++  27 
++  28     .glow-g { text-shadow: 0 0 20px var(--g), 0 0 40px var(--g); }
++  29     .glow-b { text-shadow: 0 0 20px var(--b); }
++  30     .glow-r { text-shadow: 0 0 20px var(--r); }
++  31 
++  32     .pulse { animation: pulse 2s ease-in-out infinite; }
++  33     @keyframes pulse {
++  34       0%, 100% { opacity: 1; }
++  35       50% { opacity: 0.5; }
++  36     }
++  37 
++  38     .scan-line {
++  39       background: linear-gradient(transparent 50%, rgba(0,255,136,0.03) 50%);
++  40       background-size: 100% 4px;
++  41       pointer-events: none;
++  42     }
++  43 
++  44     .profit { color: var(--g); }
++  45     .loss { color: var(--r); }
++  46     .neutral { color: #888; }
++  47 
++  48     .long-signal { background: linear-gradient(90deg, rgba(0,255,136,0.2), transparent); border-left: 2px solid var(--g); }
++  49     .short-signal { background: linear-gradient(90deg, rgba(255,45,85,0.2), transparent); border-left: 2px solid var(--r); }
++  50 
++  51     .indicator-pill {
++  52       display: inline-flex;
++  53       align-items: center;
++  54       gap: 4px;
++  55       padding: 2px 6px;
++  56       border-radius: 4px;
++  57       font-size: 9px;
++  58       font-weight: bold;
++  59     }
++  60 
++  61     .score-bar {
++  62       height: 6px;
++  63       border-radius: 3px;
++  64       background: linear-gradient(90deg, var(--r) 0%, #333 50%, var(--g) 100%);
++  65     }
++  66     .score-marker {
++  67       width: 2px;
++  68       height: 10px;
++  69       background: #fff;
++  70       border-radius: 1px;
++  71       box-shadow: 0 0 6px #fff;
++  72     }
++  73 
++  74     ::-webkit-scrollbar { width: 3px; height: 3px; }
++  75     ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
++  76 
++  77     .metric-ring {
++  78       width: 50px;
++  79       height: 50px;
++  80       border-radius: 50%;
++  81       border: 3px solid #222;
++  82       display: flex;
++  83       align-items: center;
++  84       justify-content: center;
++  85       position: relative;
++  86     }
++  87     .metric-ring::before {
++  88       content: '';
++  89       position: absolute;
++  90       inset: -3px;
++  91       border-radius: 50%;
++  92       border: 3px solid transparent;
++  93       border-top-color: var(--g);
++  94       animation: spin 2s linear infinite;
++  95     }
++  96     @keyframes spin { to { transform: rotate(360deg); } }
++  97 
++  98     .heatmap-cell {
++  99       transition: all 0.3s ease;
++ 100     }
++ 101 
++ 102     .neural-bg {
++ 103       position: fixed;
++ 104       inset: 0;
++ 105       background: 
++ 106         radial-gradient(circle at 20% 80%, rgba(0,255,136,0.03) 0%, transparent 50%),
++ 107         radial-gradient(circle at 80% 20%, rgba(0,212,255,0.03) 0%, transparent 50%);
++ 108       pointer-events: none;
++ 109       z-index: -1;
++ 110     }
++ 111   </style>
++ 112 </head>
++ 113 <body class="text-white p-2 md:p-3 overflow-x-hidden">
++ 114   <div class="neural-bg"></div>
++ 115   <div class="scan-line fixed inset-0 z-50 pointer-events-none opacity-30"></div>
++ 116 
++ 117   <!-- Header -->
++ 118   <header class="flex flex-wrap items-center justify-between gap-2 mb-2">
++ 119     <div class="flex items-center gap-2">
++ 120       <div class="metric-ring">
++ 121         <span class="text-lg">🧠</span>
++ 122       </div>
++ 123       <div>
++ 124         <h1 class="text-lg md:text-xl font-black title glow-g tracking-wider">NEURAL HFT 2026</h1>
++ 125         <p class="text-[9px] text-gray-500 tracking-widest">MULTI-INDICATOR FUSION • ADAPTIVE AI • REAL-TIME</p>
++ 126       </div>
++ 127     </div>
++ 128     <div class="flex items-center gap-2">
++ 129       <div class="glass px-2 py-1 flex items-center gap-1.5">
++ 130         <span class="pulse w-2 h-2 rounded-full bg-green-500"></span>
++ 131         <span class="text-[10px]" id="status">INITIALIZING</span>
++ 132       </div>
++ 133       <div class="glass px-2 py-1 text-[10px]" id="speed">0ms</div>
++ 134       <button onclick="hardReset()" class="text-[10px] px-2 py-1 glass text-gray-500 hover:text-white">↺</button>
++ 135     </div>
++ 136   </header>
++ 137 
++ 138   <!-- Main Stats -->
++ 139   <div class="grid grid-cols-4 md:grid-cols-8 gap-1.5 mb-2">
++ 140     <div class="glass p-2 col-span-2">
++ 141       <p class="text-[9px] text-gray-500">PORTFOLIO VALUE</p>
++ 142       <p class="text-xl font-black" id="balance">$100.00</p>
++ 143       <p class="text-[10px]" id="pnlPct">+0.00%</p>
++ 144     </div>
++ 145     <div class="glass p-2">
++ 146       <p class="text-[9px] text-gray-500">P&L</p>
++ 147       <p class="text-sm font-bold" id="pnl">$0.00</p>
++ 148     </div>
++ 149     <div class="glass p-2">
++ 150       <p class="text-[9px] text-gray-500">POSITIONS</p>
++ 151       <p class="text-sm font-bold text-blue-400" id="posCount">0</p>
++ 152     </div>
++ 153     <div class="glass p-2">
++ 154       <p class="text-[9px] text-gray-500">TRADES</p>
++ 155       <p class="text-sm font-bold text-purple-400" id="tradeCount">0</p>
++ 156     </div>
++ 157     <div class="glass p-2">
++ 158       <p class="text-[9px] text-gray-500">WIN RATE</p>
++ 159       <p class="text-sm font-bold text-yellow-400" id="winRate">0%</p>
++ 160     </div>
++ 161     <div class="glass p-2">
++ 162       <p class="text-[9px] text-gray-500">SHARPE</p>
++ 163       <p class="text-sm font-bold text-cyan-400" id="sharpe">0.00</p>
++ 164     </div>
++ 165     <div class="glass p-2">
++ 166       <p class="text-[9px] text-gray-500">DRAWDOWN</p>
++ 167       <p class="text-sm font-bold text-red-400" id="drawdown">0.0%</p>
++ 168     </div>
++ 169   </div>
++ 170 
++ 171   <!-- Indicator Suite -->
++ 172   <div class="glass p-2 mb-2">
++ 173     <div class="flex items-center justify-between mb-1.5">
++ 174       <h2 class="text-[10px] font-bold text-cyan-400">🔬 INDICATOR SUITE (12 SIGNALS)</h2>
++ 175       <div class="flex items-center gap-1">
++ 176         <span class="text-[9px] text-gray-500">NEURAL SCORE:</span>
++ 177         <span class="text-sm font-bold" id="neuralScore">0</span>
++ 178       </div>
++ 179     </div>
++ 180     <div class="grid grid-cols-4 md:grid-cols-12 gap-1" id="indicatorGrid">
++ 181       <!-- Populated by JS -->
++ 182     </div>
++ 183   </div>
++ 184 
++ 185   <!-- Main Grid -->
++ 186   <div class="grid grid-cols-1 lg:grid-cols-4 gap-2">
++ 187     <!-- Market Scanner -->
++ 188     <div class="lg:col-span-3 glass p-2">
++ 189       <div class="flex justify-between items-center mb-1.5">
++ 190         <h2 class="text-[10px] font-bold">📊 MARKET SCANNER</h2>
++ 191         <span class="text-[9px] text-gray-500" id="lastUpdate">--:--:--</span>
++ 192       </div>
++ 193       <div class="overflow-auto max-h-52">
++ 194         <table class="w-full text-[10px]">
++ 195           <thead class="sticky top-0 bg-[#0d1117] z-10">
++ 196             <tr class="text-gray-500 border-b border-gray-800">
++ 197               <th class="text-left py-1 px-1">ASSET</th>
++ 198               <th class="text-right px-1">PRICE</th>
++ 199               <th class="text-center px-1">SCORE</th>
++ 200               <th class="text-center px-1">Z</th>
++ 201               <th class="text-center px-1">RSI</th>
++ 202               <th class="text-center px-1">OBI</th>
++ 203               <th class="text-center px-1">VWAP</th>
++ 204               <th class="text-center px-1">MACD</th>
++ 205               <th class="text-center px-1">BB</th>
++ 206               <th class="text-center px-1">ATR%</th>
++ 207               <th class="text-center px-1">SIGNAL</th>
++ 208             </tr>
++ 209           </thead>
++ 210           <tbody id="marketTable"></tbody>
++ 211         </table>
++ 212       </div>
++ 213     </div>
++ 214 
++ 215     <!-- Right Panel -->
++ 216     <div class="space-y-2">
++ 217       <div class="glass p-2">
++ 218         <h2 class="text-[10px] font-bold mb-1.5">📈 ACTIVE</h2>
++ 219         <div id="positions" class="space-y-1 max-h-20 overflow-auto text-[10px]">
++ 220           <p class="text-gray-600 text-center py-1">Empty</p>
++ 221         </div>
++ 222       </div>
++ 223       <div class="glass p-2">
++ 224         <h2 class="text-[10px] font-bold mb-1.5">⚡ SIGNALS</h2>
++ 225         <div id="signals" class="space-y-1 max-h-20 overflow-auto text-[10px]">
++ 226           <p class="text-gray-600 text-center py-1">Scanning...</p>
++ 227         </div>
++ 228       </div>
++ 229     </div>
++ 230   </div>
++ 231 
++ 232   <!-- Charts Row -->
++ 233   <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
++ 234     <div class="glass p-2">
++ 235       <h2 class="text-[10px] font-bold mb-1">💰 EQUITY CURVE</h2>
++ 236       <canvas id="equityChart" height="80"></canvas>
++ 237     </div>
++ 238     <div class="glass p-2">
++ 239       <h2 class="text-[10px] font-bold mb-1">📊 P&L DISTRIBUTION</h2>
++ 240       <canvas id="pnlChart" height="80"></canvas>
++ 241     </div>
++ 242     <div class="glass p-2">
++ 243       <h2 class="text-[10px] font-bold mb-1">📜 TRADE LOG</h2>
++ 244       <div id="tradeLog" class="space-y-0.5 max-h-20 overflow-auto text-[9px]">
++ 245         <p class="text-gray-600 text-center py-2">No trades</p>
++ 246       </div>
++ 247     </div>
++ 248   </div>
++ 249 
++ 250   <!-- Config Panel -->
++ 251   <div class="glass p-2 mt-2">
++ 252     <div class="flex items-center justify-between mb-1">
++ 253       <h2 class="text-[10px] font-bold text-purple-400">⚙️ HFT PARAMETERS</h2>
++ 254       <span class="text-[9px] text-gray-500">Adaptive Mode Active</span>
++ 255     </div>
++ 256     <div class="grid grid-cols-5 md:grid-cols-10 gap-1 text-[9px]">
++ 257       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">TP</p><p class="font-bold profit">+0.4%</p></div>
++ 258       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">SL</p><p class="font-bold loss">-0.25%</p></div>
++ 259       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">TRAIL</p><p class="font-bold text-yellow-400">0.15%</p></div>
++ 260       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">SIZE</p><p class="font-bold text-blue-400">8%</p></div>
++ 261       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">MAX</p><p class="font-bold text-purple-400">6</p></div>
++ 262       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">MIN SCORE</p><p class="font-bold text-cyan-400">60</p></div>
++ 263       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">SPEED</p><p class="font-bold text-orange-400">300ms</p></div>
++ 264       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">RSI</p><p class="font-bold text-green-400">25/75</p></div>
++ 265       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">Z-SCORE</p><p class="font-bold text-pink-400">±1.8</p></div>
++ 266       <div class="bg-black/40 rounded p-1 text-center"><p class="text-gray-500">MODE</p><p class="font-bold text-green-400">AUTO</p></div>
++ 267     </div>
++ 268   </div>
++ 269 
++ 270   <script>
++ 271     // ========== CONFIGURATION ==========
++ 272     const CFG = {
++ 273       initial: 100,
++ 274       symbols: ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','LINKUSDT','MATICUSDT'],
++ 275       
++ 276       // Trading params - optimized for profitability
++ 277       takeProfit: 0.004,      // 0.4% TP
++ 278       stopLoss: 0.0025,       // 0.25% SL  
++ 279       trailingStop: 0.0015,   // 0.15% trailing
++ 280       positionSize: 0.08,     // 8% per trade
++ 281       maxPositions: 6,
++ 282       minScore: 60,           // Minimum neural score to trade
++ 283       
++ 284       // Indicator thresholds
++ 285       zScoreThreshold: 1.8,
++ 286       rsiOversold: 25,
++ 287       rsiOverbought: 75,
++ 288       obiThreshold: 0.06,
++ 289       vwapDeviation: 0.0012,
++ 290       macdThreshold: 0.0001,
++ 291       bbThreshold: 0.15,
++ 292       stochThreshold: 20,
++ 293       
++ 294       updateMs: 300,          // 300ms updates
++ 295       lookback: 20
++ 296     };
++ 297 
++ 298     // ========== STATE ==========
++ 299     let S = loadState() || createFreshState();
++ 300     let market = {};
++ 301     let indicators = {};
++ 302     let peakBalance = S.balance;
++ 303 
++ 304     function createFreshState() {
++ 305       return {
++ 306         balance: CFG.initial,
++ 307         startBalance: CFG.initial,
++ 308         positions: [],
++ 309         trades: [],
++ 310         signals: [],
++ 311         equity: [{t:Date.now(),v:CFG.initial}],
++ 312         pnlHistory: [],
++ 313         startTime: Date.now(),
++ 314         peakBalance: CFG.initial
++ 315       };
++ 316     }
++ 317 
++ 318     // ========== PERSISTENCE ==========
++ 319     function saveState() {
++ 320       try {
++ 321         const d = {
++ 322           b: Math.round(S.balance*100)/100,
++ 323           sb: S.startBalance,
++ 324           pb: S.peakBalance || S.balance,
++ 325           p: S.positions.map(p=>({i:p.id,s:p.symbol,t:p.type,e:p.entry,q:p.qty,sz:p.size,tp:p.tp,sl:p.sl,ts:p.trailStop,hp:p.highPrice})),
++ 326           tr: S.trades.slice(-100).map(t=>({s:t.symbol,t:t.type,pnl:Math.round(t.pnl*100)/100,r:t.reason})),
++ 327           st: S.startTime
++ 328         };
++ 329         history.replaceState(null,'','#'+btoa(JSON.stringify(d)));
++ 330       } catch(e){}
++ 331     }
++ 332 
++ 333     function loadState() {
++ 334       try {
++ 335         const h = location.hash.slice(1);
++ 336         if(!h) return null;
++ 337         const d = JSON.parse(atob(h));
++ 338         return {
++ 339           balance: d.b,
++ 340           startBalance: d.sb,
++ 341           peakBalance: d.pb || d.b,
++ 342           positions: d.p.map(p=>({id:p.i,symbol:p.s,type:p.t,entry:p.e,qty:p.q,size:p.sz,tp:p.tp,sl:p.sl,trailStop:p.ts,highPrice:p.hp||p.e})),
++ 343           trades: d.tr.map(t=>({symbol:t.s,type:t.t,pnl:t.pnl,reason:t.r,time:Date.now()})),
++ 344           signals: [],
++ 345           equity: [{t:Date.now(),v:d.b}],
++ 346           pnlHistory: d.tr.map(t=>t.pnl),
++ 347           startTime: d.st || Date.now()
++ 348         };
++ 349       } catch(e) { return null; }
++ 350     }
++ 351 
++ 352     function hardReset() {
++ 353       S = createFreshState();
++ 354       history.replaceState(null,'',location.pathname);
++ 355       updateUI();
++ 356     }
++ 357 
++ 358     // ========== DOM ==========
++ 359     const el = {
++ 360       status: document.getElementById('status'),
++ 361       speed: document.getElementById('speed'),
++ 362       balance: document.getElementById('balance'),
++ 363       pnl: document.getElementById('pnl'),
++ 364       pnlPct: document.getElementById('pnlPct'),
++ 365       posCount: document.getElementById('posCount'),
++ 366       tradeCount: document.getElementById('tradeCount'),
++ 367       winRate: document.getElementById('winRate'),
++ 368       sharpe: document.getElementById('sharpe'),
++ 369       drawdown: document.getElementById('drawdown'),
++ 370       neuralScore: document.getElementById('neuralScore'),
++ 371       indicatorGrid: document.getElementById('indicatorGrid'),
++ 372       marketTable: document.getElementById('marketTable'),
++ 373       positions: document.getElementById('positions'),
++ 374       signals: document.getElementById('signals'),
++ 375       tradeLog: document.getElementById('tradeLog'),
++ 376       lastUpdate: document.getElementById('lastUpdate')
++ 377     };
++ 378 
++ 379     // ========== CHARTS ==========
++ 380     const equityChart = new Chart(document.getElementById('equityChart').getContext('2d'), {
++ 381       type: 'line',
++ 382       data: { labels: [], datasets: [{ data: [], borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.4, borderWidth: 1.5, pointRadius: 0 }] },
++ 383       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#444', font: { size: 8 }, callback: v=>'$'+v.toFixed(0) } } }, animation: false }
++ 384     });
++ 385 
++ 386     const pnlChart = new Chart(document.getElementById('pnlChart').getContext('2d'), {
++ 387       type: 'bar',
++ 388       data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
++ 389       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#444', font: { size: 8 } } } }, animation: false }
++ 390     });
++ 391 
++ 392     // ========== BINANCE DATA ==========
++ 393     async function fetchData() {
++ 394       const start = Date.now();
++ 395       try {
++ 396         const [tickerRes, ...rest] = await Promise.all([
++ 397           fetch('https://api.binance.com/api/v3/ticker/24hr'),
++ 398           ...CFG.symbols.map(s => fetch(`https://api.binance.com/api/v3/klines?symbol=${s}&interval=1m&limit=${CFG.lookback}`).then(r=>r.json()).then(d=>({s,d})).catch(()=>null)),
++ 399           ...CFG.symbols.map(s => fetch(`https://api.binance.com/api/v3/depth?symbol=${s}&limit=10`).then(r=>r.json()).then(d=>({s,d})).catch(()=>null))
++ 400         ]);
++ 401 
++ 402         const tickers = await tickerRes.json();
++ 403         const klines = rest.slice(0, CFG.symbols.length);
++ 404         const depths = rest.slice(CFG.symbols.length);
++ 405 
++ 406         CFG.symbols.forEach(sym => {
++ 407           const t = tickers.find(x => x.symbol === sym);
++ 408           if (t) {
++ 409             market[sym] = {
++ 410               price: parseFloat(t.lastPrice),
++ 411               change: parseFloat(t.priceChangePercent),
++ 412               high: parseFloat(t.highPrice),
++ 413               low: parseFloat(t.lowPrice),
++ 414               volume: parseFloat(t.quoteVolume),
++ 415               trades: parseInt(t.count)
++ 416             };
++ 417           }
++ 418         });
++ 419 
++ 420         // Process klines for indicators
++ 421         klines.forEach(k => {
++ 422           if (!k || !k.d || k.d.length < 10) return;
++ 423           const closes = k.d.map(c => parseFloat(c[4]));
++ 424           const highs = k.d.map(c => parseFloat(c[2]));
++ 425           const lows = k.d.map(c => parseFloat(c[3]));
++ 426           const volumes = k.d.map(c => parseFloat(c[5]));
++ 427           calculateAllIndicators(k.s, closes, highs, lows, volumes);
++ 428         });
++ 429 
++ 430         // Process order book for OBI
++ 431         depths.forEach(d => {
++ 432           if (!d || !d.d || !d.d.bids) return;
++ 433           const bids = d.d.bids.reduce((s,[_,q]) => s + parseFloat(q), 0);
++ 434           const asks = d.d.asks.reduce((s,[_,q]) => s + parseFloat(q), 0);
++ 435           const total = bids + asks;
++ 436           if (!indicators[d.s]) indicators[d.s] = {};
++ 437           indicators[d.s].obi = total > 0 ? (bids - asks) / total : 0;
++ 438           indicators[d.s].spread = d.d.asks[0] && d.d.bids[0] ? 
++ 439             (parseFloat(d.d.asks[0][0]) - parseFloat(d.d.bids[0][0])) / parseFloat(d.d.bids[0][0]) * 100 : 0;
++ 440         });
++ 441 
++ 442         el.status.textContent = 'LIVE';
++ 443         el.status.className = 'text-[10px] text-green-400';
++ 444         el.speed.textContent = (Date.now() - start) + 'ms';
++ 445         el.lastUpdate.textContent = new Date().toLocaleTimeString();
++ 446         return true;
++ 447       } catch (e) {
++ 448         el.status.textContent = 'RETRY';
++ 449         el.status.className = 'text-[10px] text-yellow-400';
++ 450         return false;
++ 451       }
++ 452     }
++ 453 
++ 454     // ========== ADVANCED INDICATORS ==========
++ 455     function calculateAllIndicators(sym, closes, highs, lows, volumes) {
++ 456       const n = closes.length;
++ 457       const price = closes[n-1];
++ 458       const ind = indicators[sym] || {};
++ 459 
++ 460       // 1. Z-SCORE (Mean Reversion)
++ 461       const mean = closes.reduce((a,b)=>a+b,0)/n;
++ 462       const std = Math.sqrt(closes.reduce((a,b)=>a+Math.pow(b-mean,2),0)/n);
++ 463       ind.zScore = std > 0 ? (price - mean) / std : 0;
++ 464 
++ 465       // 2. RSI (Momentum)
++ 466       let gains = 0, losses = 0;
++ 467       for (let i = 1; i < n; i++) {
++ 468         const diff = closes[i] - closes[i-1];
++ 469         if (diff > 0) gains += diff; else losses -= diff;
++ 470       }
++ 471       const avgGain = gains / (n-1);
++ 472       const avgLoss = losses / (n-1);
++ 473       ind.rsi = avgLoss > 0 ? 100 - (100 / (1 + avgGain/avgLoss)) : 100;
++ 474 
++ 475       // 3. VWAP
++ 476       let cumTPV = 0, cumVol = 0;
++ 477       for (let i = 0; i < n; i++) {
++ 478         const tp = (highs[i] + lows[i] + closes[i]) / 3;
++ 479         cumTPV += tp * volumes[i];
++ 480         cumVol += volumes[i];
++ 481       }
++ 482       ind.vwap = cumVol > 0 ? cumTPV / cumVol : price;
++ 483       ind.vwapDiff = (price - ind.vwap) / ind.vwap;
++ 484 
++ 485       // 4. BOLLINGER BANDS
++ 486       ind.bbUpper = mean + 2 * std;
++ 487       ind.bbLower = mean - 2 * std;
++ 488       ind.bbWidth = ind.bbUpper - ind.bbLower;
++ 489       ind.bbPercent = ind.bbWidth > 0 ? (price - ind.bbLower) / ind.bbWidth : 0.5;
++ 490 
++ 491       // 5. MACD
++ 492       const ema12 = calcEMA(closes, 12);
++ 493       const ema26 = calcEMA(closes, Math.min(26, n));
++ 494       ind.macd = ema12 - ema26;
++ 495       ind.macdSignal = ind.macd > 0 ? 1 : -1;
++ 496 
++ 497       // 6. STOCHASTIC
++ 498       const lowestLow = Math.min(...lows);
++ 499       const highestHigh = Math.max(...highs);
++ 500       ind.stoch = highestHigh !== lowestLow ? ((price - lowestLow) / (highestHigh - lowestLow)) * 100 : 50;
++ 501 
++ 502       // 7. ATR (Volatility)
++ 503       let atrSum = 0;
++ 504       for (let i = 1; i < n; i++) {
++ 505         const tr = Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i-1]), Math.abs(lows[i] - closes[i-1]));
++ 506         atrSum += tr;
++ 507       }
++ 508       ind.atr = atrSum / (n-1);
++ 509       ind.atrPercent = (ind.atr / price) * 100;
++ 510 
++ 511       // 8. MOMENTUM (Rate of Change)
++ 512       ind.momentum = n >= 5 ? (price - closes[n-5]) / closes[n-5] : 0;
++ 513 
++ 514       // 9. VOLUME Z-SCORE
++ 515       const volMean = volumes.reduce((a,b)=>a+b,0)/volumes.length;
++ 516       const volStd = Math.sqrt(volumes.reduce((a,b)=>a+Math.pow(b-volMean,2),0)/volumes.length);
++ 517       ind.volumeZ = volStd > 0 ? (volumes[n-1] - volMean) / volStd : 0;
++ 518 
++ 519       // 10. PRICE ACCELERATION
++ 520       if (n >= 3) {
++ 521         const v1 = closes[n-1] - closes[n-2];
++ 522         const v2 = closes[n-2] - closes[n-3];
++ 523         ind.acceleration = v1 - v2;
++ 524       } else {
++ 525         ind.acceleration = 0;
++ 526       }
++ 527 
++ 528       // 11. TREND STRENGTH (ADX approximation)
++ 529       ind.trendStrength = Math.abs(ind.momentum) * 100;
++ 530 
++ 531       // 12. ORDER FLOW (from OBI if available)
++ 532       ind.orderFlow = ind.obi || 0;
++ 533 
++ 534       // ========== NEURAL COMPOSITE SCORE ==========
++ 535       let score = 50; // Base neutral
++ 536 
++ 537       // Z-Score contribution (mean reversion)
++ 538       if (ind.zScore < -CFG.zScoreThreshold) score += 15;
++ 539       else if (ind.zScore > CFG.zScoreThreshold) score -= 15;
++ 540 
++ 541       // RSI contribution
++ 542       if (ind.rsi < CFG.rsiOversold) score += 12;
++ 543       else if (ind.rsi > CFG.rsiOverbought) score -= 12;
++ 544 
++ 545       // OBI contribution
++ 546       if (ind.obi > CFG.obiThreshold) score += 10;
++ 547       else if (ind.obi < -CFG.obiThreshold) score -= 10;
++ 548 
++ 549       // VWAP contribution
++ 550       if (ind.vwapDiff < -CFG.vwapDeviation) score += 8;
++ 551       else if (ind.vwapDiff > CFG.vwapDeviation) score -= 8;
++ 552 
++ 553       // Bollinger contribution
++ 554       if (ind.bbPercent < CFG.bbThreshold) score += 8;
++ 555       else if (ind.bbPercent > (1 - CFG.bbThreshold)) score -= 8;
++ 556 
++ 557       // MACD contribution
++ 558       if (ind.macd > CFG.macdThreshold) score += 6;
++ 559       else if (ind.macd < -CFG.macdThreshold) score -= 6;
++ 560 
++ 561       // Stochastic contribution
++ 562       if (ind.stoch < CFG.stochThreshold) score += 6;
++ 563       else if (ind.stoch > (100 - CFG.stochThreshold)) score -= 6;
++ 564 
++ 565       // Momentum confirmation
++ 566       if (ind.momentum > 0.002 && score > 50) score += 5;
++ 567       else if (ind.momentum < -0.002 && score < 50) score -= 5;
++ 568 
++ 569       // Volume confirmation (amplify signal)
++ 570       if (ind.volumeZ > 1) score = score > 50 ? score * 1.1 : score * 0.9;
++ 571 
++ 572       // Acceleration boost
++ 573       if (ind.acceleration > 0 && score > 50) score += 3;
++ 574       else if (ind.acceleration < 0 && score < 50) score -= 3;
++ 575 
++ 576       ind.neuralScore = Math.max(0, Math.min(100, Math.round(score)));
++ 577       indicators[sym] = ind;
++ 578     }
++ 579 
++ 580     function calcEMA(data, period) {
++ 581       const k = 2 / (period + 1);
++ 582       let ema = data[0];
++ 583       for (let i = 1; i < data.length; i++) {
++ 584         ema = data[i] * k + ema * (1 - k);
++ 585       }
++ 586       return ema;
++ 587     }
++ 588 
++ 589     // ========== TRADING ENGINE ==========
++ 590     function trade() {
++ 591       CFG.symbols.forEach(sym => {
++ 592         const m = market[sym];
++ 593         const ind = indicators[sym];
++ 594         if (!m || !ind) return;
++ 595 
++ 596         const hasPos = S.positions.find(p => p.symbol === sym);
++ 597         if (hasPos || S.positions.length >= CFG.maxPositions) return;
++ 598 
++ 599         const score = ind.neuralScore || 50;
++ 600         
++ 601         // LONG signal
++ 602         if (score >= CFG.minScore + 10) {
++ 603           openPosition({ type: 'LONG', symbol: sym, price: m.price, score });
++ 604         }
++ 605         // SHORT signal  
++ 606         else if (score <= (100 - CFG.minScore - 10)) {
++ 607           openPosition({ type: 'SHORT', symbol: sym, price: m.price, score });
++ 608         }
++ 609       });
++ 610 
++ 611       managePositions();
++ 612     }
++ 613 
++ 614     function openPosition(sig) {
++ 615       const size = S.balance * CFG.positionSize;
++ 616       if (size < 0.5) return;
++ 617 
++ 618       const qty = size / sig.price;
++ 619       const isLong = sig.type === 'LONG';
++ 620       
++ 621       // Dynamic TP/SL based on ATR
++ 622       const ind = indicators[sig.symbol] || {};
++ 623       const atrMult = Math.max(0.5, Math.min(2, (ind.atrPercent || 0.3) / 0.3));
++ 624       const tp = CFG.takeProfit * atrMult;
++ 625       const sl = CFG.stopLoss * atrMult;
++ 626 
++ 627       S.positions.push({
++ 628         id: Date.now(),
++ 629         symbol: sig.symbol,
++ 630         type: sig.type,
++ 631         entry: sig.price,
++ 632         qty,
++ 633         size,
++ 634         tp: isLong ? sig.price * (1 + tp) : sig.price * (1 - tp),
++ 635         sl: isLong ? sig.price * (1 - sl) : sig.price * (1 + sl),
++ 636         trailStop: null,
++ 637         highPrice: sig.price,
++ 638         score: sig.score
++ 639       });
++ 640 
++ 641       S.balance -= size;
++ 642       addSignal({ type: sig.type, symbol: sig.symbol, price: sig.price, score: sig.score, action: 'OPEN' });
++ 643       saveState();
++ 644     }
++ 645 
++ 646     function managePositions() {
++ 647       const closed = [];
++ 648 
++ 649       S.positions.forEach(pos => {
++ 650         const m = market[pos.symbol];
++ 651         if (!m) return;
++ 652 
++ 653         const price = m.price;
++ 654         const isLong = pos.type === 'LONG';
++ 655         let close = false, reason = '';
++ 656 
++ 657         // Update high price for trailing
++ 658         if (isLong && price > pos.highPrice) pos.highPrice = price;
++ 659         else if (!isLong && price < pos.highPrice) pos.highPrice = price;
++ 660 
++ 661         // Check trailing stop activation
++ 662         const profitPct = isLong ? (price - pos.entry) / pos.entry : (pos.entry - price) / pos.entry;
++ 663         if (profitPct > CFG.takeProfit * 0.5 && !pos.trailStop) {
++ 664           // Activate trailing stop
++ 665           pos.trailStop = isLong ? price * (1 - CFG.trailingStop) : price * (1 + CFG.trailingStop);
++ 666         }
++ 667 
++ 668         // Update trailing stop
++ 669         if (pos.trailStop) {
++ 670           if (isLong) {
++ 671             pos.trailStop = Math.max(pos.trailStop, price * (1 - CFG.trailingStop));
++ 672           } else {
++ 673             pos.trailStop = Math.min(pos.trailStop, price * (1 + CFG.trailingStop));
++ 674           }
++ 675         }
++ 676 
++ 677         // Check exit conditions
++ 678         if (isLong) {
++ 679           if (price >= pos.tp) { close = true; reason = 'TP'; }
++ 680           else if (price <= pos.sl) { close = true; reason = 'SL'; }
++ 681           else if (pos.trailStop && price <= pos.trailStop) { close = true; reason = 'TRAIL'; }
++ 682         } else {
++ 683           if (price <= pos.tp) { close = true; reason = 'TP'; }
++ 684           else if (price >= pos.sl) { close = true; reason = 'SL'; }
++ 685           else if (pos.trailStop && price >= pos.trailStop) { close = true; reason = 'TRAIL'; }
++ 686         }
++ 687 
++ 688         if (close) {
++ 689           const pnl = isLong ? (price - pos.entry) * pos.qty : (pos.entry - price) * pos.qty;
++ 690           S.balance += pos.size + pnl;
++ 691           
++ 692           S.trades.push({ symbol: pos.symbol, type: pos.type, entry: pos.entry, exit: price, pnl, pnlPct: (pnl/pos.size)*100, reason, time: Date.now() });
++ 693           S.pnlHistory.push(pnl);
++ 694           if (S.pnlHistory.length > 100) S.pnlHistory.shift();
++ 695 
++ 696           addSignal({ type: 'CLOSE', symbol: pos.symbol, price, pnl, reason });
++ 697           closed.push(pos.id);
++ 698 
++ 699           // Update peak balance
++ 700           if (S.balance > S.peakBalance) S.peakBalance = S.balance;
++ 701         }
++ 702       });
++ 703 
++ 704       if (closed.length) {
++ 705         S.positions = S.positions.filter(p => !closed.includes(p.id));
++ 706         saveState();
++ 707       }
++ 708     }
++ 709 
++ 710     function addSignal(sig) {
++ 711       S.signals.unshift({ ...sig, time: Date.now() });
++ 712       if (S.signals.length > 20) S.signals.pop();
++ 713     }
++ 714 
++ 715     // ========== UI ==========
++ 716     function updateUI() {
++ 717       const posValue = S.positions.reduce((sum, p) => {
++ 718         const m = market[p.symbol];
++ 719         return sum + (m ? p.qty * m.price : p.size);
++ 720       }, 0);
++ 721       
++ 722       const total = S.balance + posValue;
++ 723       const pnl = total - S.startBalance;
++ 724       const pnlPct = (pnl / S.startBalance) * 100;
++ 725       const wins = S.trades.filter(t => t.pnl > 0).length;
++ 726       const wr = S.trades.length > 0 ? Math.round(wins / S.trades.length * 100) : 0;
++ 727       
++ 728       // Sharpe ratio approximation
++ 729       const returns = S.pnlHistory.length > 1 ? S.pnlHistory : [0];
++ 730       const avgReturn = returns.reduce((a,b)=>a+b,0)/returns.length;
++ 731       const stdReturn = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgReturn,2),0)/returns.length);
++ 732       const sharpe = stdReturn > 0 ? (avgReturn / stdReturn * Math.sqrt(252)).toFixed(2) : '0.00';
++ 733 
++ 734       // Drawdown
++ 735       const drawdown = S.peakBalance > 0 ? ((S.peakBalance - total) / S.peakBalance * 100).toFixed(1) : '0.0';
++ 736 
++ 737       // Stats
++ 738       el.balance.textContent = '$' + total.toFixed(2);
++ 739       el.balance.className = 'text-xl font-black ' + (pnl >= 0 ? 'profit glow-g' : 'loss glow-r');
++ 740       el.pnl.textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2);
++ 741       el.pnl.className = 'text-sm font-bold ' + (pnl >= 0 ? 'profit' : 'loss');
++ 742       el.pnlPct.textContent = (pnl >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
++ 743       el.pnlPct.className = 'text-[10px] ' + (pnl >= 0 ? 'profit' : 'loss');
++ 744       el.posCount.textContent = S.positions.length;
++ 745       el.tradeCount.textContent = S.trades.length;
++ 746       el.winRate.textContent = wr + '%';
++ 747       el.sharpe.textContent = sharpe;
++ 748       el.drawdown.textContent = drawdown + '%';
++ 749 
++ 750       // Indicator grid
++ 751       const avgScore = Object.values(indicators).reduce((s,i) => s + (i.neuralScore||50), 0) / CFG.symbols.length;
++ 752       el.neuralScore.textContent = Math.round(avgScore);
++ 753       el.neuralScore.className = 'text-sm font-bold ' + (avgScore > 60 ? 'profit' : avgScore < 40 ? 'loss' : 'neutral');
++ 754 
++ 755       const indNames = ['Z-SCR','RSI','OBI','VWAP','MACD','BB%','STOCH','ATR','MOM','VOL-Z','ACCEL','FLOW'];
++ 756       el.indicatorGrid.innerHTML = indNames.map((name, i) => {
++ 757         const values = Object.values(indicators);
++ 758         let avg = 0, color = 'text-gray-500';
++ 759         
++ 760         switch(i) {
++ 761           case 0: avg = values.reduce((s,v)=>s+(v.zScore||0),0)/values.length; color = Math.abs(avg) > 1 ? (avg < 0 ? 'profit' : 'loss') : 'neutral'; break;
++ 762           case 1: avg = values.reduce((s,v)=>s+(v.rsi||50),0)/values.length; color = avg < 35 ? 'profit' : avg > 65 ? 'loss' : 'neutral'; break;
++ 763           case 2: avg = values.reduce((s,v)=>s+(v.obi||0),0)/values.length*100; color = avg > 3 ? 'profit' : avg < -3 ? 'loss' : 'neutral'; break;
++ 764           case 3: avg = values.reduce((s,v)=>s+(v.vwapDiff||0),0)/values.length*100; color = avg < -0.1 ? 'profit' : avg > 0.1 ? 'loss' : 'neutral'; break;
++ 765           case 4: avg = values.reduce((s,v)=>s+(v.macd||0)*10000,0)/values.length; color = avg > 0 ? 'profit' : 'loss'; break;
++ 766           case 5: avg = values.reduce((s,v)=>s+(v.bbPercent||0.5),0)/values.length*100; color = avg < 25 ? 'profit' : avg > 75 ? 'loss' : 'neutral'; break;
++ 767           case 6: avg = values.reduce((s,v)=>s+(v.stoch||50),0)/values.length; color = avg < 25 ? 'profit' : avg > 75 ? 'loss' : 'neutral'; break;
++ 768           case 7: avg = values.reduce((s,v)=>s+(v.atrPercent||0),0)/values.length; color = 'text-yellow-400'; break;
++ 769           case 8: avg = values.reduce((s,v)=>s+(v.momentum||0),0)/values.length*100; color = avg > 0.1 ? 'profit' : avg < -0.1 ? 'loss' : 'neutral'; break;
++ 770           case 9: avg = values.reduce((s,v)=>s+(v.volumeZ||0),0)/values.length; color = avg > 1 ? 'text-yellow-400' : 'neutral'; break;
++ 771           case 10: avg = values.reduce((s,v)=>s+(v.acceleration||0),0)/values.length*1000; color = avg > 0 ? 'profit' : avg < 0 ? 'loss' : 'neutral'; break;
++ 772           case 11: avg = values.reduce((s,v)=>s+(v.orderFlow||0),0)/values.length*100; color = avg > 3 ? 'profit' : avg < -3 ? 'loss' : 'neutral'; break;
++ 773         }
++ 774         
++ 775         return `<div class="indicator-pill bg-black/40 ${color}">${name}<span class="opacity-70">${typeof avg === 'number' ? avg.toFixed(1) : avg}</span></div>`;
++ 776       }).join('');
++ 777 
++ 778       // Market table
++ 779       let rows = '';
++ 780       CFG.symbols.forEach(sym => {
++ 781         const m = market[sym];
++ 782         const ind = indicators[sym] || {};
++ 783         if (!m) return;
++ 784 
++ 785         const score = ind.neuralScore || 50;
++ 786         const hasPos = S.positions.find(p => p.symbol === sym);
++ 787         const scorePos = score;
++ 788 
++ 789         let sig = '';
++ 790         if (score >= CFG.minScore + 10) sig = '<span class="text-[9px] font-bold px-1 rounded bg-green-500/30 profit">LONG</span>';
++ 791         else if (score <= 100 - CFG.minScore - 10) sig = '<span class="text-[9px] font-bold px-1 rounded bg-red-500/30 loss">SHORT</span>';
++ 792 
++ 793         rows += `
++ 794           <tr class="border-b border-gray-800/20 hover:bg-white/5">
++ 795             <td class="py-1 px-1 font-bold">${sym.replace('USDT','')}${hasPos?'<span class="text-blue-400 ml-0.5">●</span>':''}</td>
++ 796             <td class="text-right px-1 ${m.change>=0?'profit':'loss'}">$${m.price>100?m.price.toFixed(1):m.price.toFixed(4)}</td>
++ 797             <td class="px-1"><div class="relative w-10 h-1.5 mx-auto bg-gradient-to-r from-red-500 via-gray-600 to-green-500 rounded"><div class="absolute top-[-2px] w-1 h-2.5 bg-white rounded shadow" style="left:${scorePos}%"></div></div></td>
++ 798             <td class="text-center px-1 ${Math.abs(ind.zScore||0)>1.5?(ind.zScore<0?'profit':'loss'):'neutral'}">${(ind.zScore||0).toFixed(1)}</td>
++ 799             <td class="text-center px-1 ${(ind.rsi||50)<30?'profit':(ind.rsi||50)>70?'loss':'neutral'}">${(ind.rsi||50).toFixed(0)}</td>
++ 800             <td class="text-center px-1 ${(ind.obi||0)>0.05?'profit':(ind.obi||0)<-0.05?'loss':'neutral'}">${((ind.obi||0)*100).toFixed(0)}%</td>
++ 801             <td class="text-center px-1 ${(ind.vwapDiff||0)<-0.001?'profit':(ind.vwapDiff||0)>0.001?'loss':'neutral'}">${((ind.vwapDiff||0)*100).toFixed(2)}%</td>
++ 802             <td class="text-center px-1 ${(ind.macd||0)>0?'profit':'loss'}">${(ind.macd||0)>0?'↑':'↓'}</td>
++ 803             <td class="text-center px-1 ${(ind.bbPercent||0.5)<0.2?'profit':(ind.bbPercent||0.5)>0.8?'loss':'neutral'}">${((ind.bbPercent||0.5)*100).toFixed(0)}%</td>
++ 804             <td class="text-center px-1 text-yellow-400">${(ind.atrPercent||0).toFixed(2)}%</td>
++ 805             <td class="text-center px-1">${sig||'<span class="text-gray-700">—</span>'}</td>
++ 806           </tr>
++ 807         `;
++ 808       });
++ 809       el.marketTable.innerHTML = rows || '<tr><td colspan="11" class="text-center py-4 text-gray-600">Loading...</td></tr>';
++ 810 
++ 811       // Positions
++ 812       if (S.positions.length === 0) {
++ 813         el.positions.innerHTML = '<p class="text-gray-600 text-center py-1">Empty</p>';
++ 814       } else {
++ 815         el.positions.innerHTML = S.positions.map(p => {
++ 816           const m = market[p.symbol];
++ 817           const curr = m ? m.price : p.entry;
++ 818           const pnl = p.type === 'LONG' ? (curr - p.entry) * p.qty : (p.entry - curr) * p.qty;
++ 819           const pnlPct = (pnl / p.size) * 100;
++ 820           return `<div class="p-1 rounded ${pnl>=0?'long-signal':'short-signal'}"><div class="flex justify-between"><span class="font-bold">${p.symbol.replace('USDT','')} <span class="${p.type==='LONG'?'profit':'loss'}">${p.type}</span></span><span class="${pnl>=0?'profit':'loss'}">${pnl>=0?'+':''}${pnlPct.toFixed(2)}%</span></div></div>`;
++ 821         }).join('');
++ 822       }
++ 823 
++ 824       // Signals
++ 825       if (S.signals.length === 0) {
++ 826         el.signals.innerHTML = '<p class="text-gray-600 text-center py-1">Scanning...</p>';
++ 827       } else {
++ 828         el.signals.innerHTML = S.signals.slice(0,5).map(s => {
++ 829           const isLong = s.type === 'LONG';
++ 830           const isClose = s.type === 'CLOSE';
++ 831           return `<div class="p-1 rounded ${isClose?(s.pnl>=0?'long-signal':'short-signal'):(isLong?'long-signal':'short-signal')}"><div class="flex justify-between"><span class="font-bold">${s.symbol.replace('USDT','')} ${s.type}</span>${s.pnl!==undefined?`<span class="${s.pnl>=0?'profit':'loss'}">${s.pnl>=0?'+':''}$${s.pnl.toFixed(2)}</span>`:`<span class="text-gray-500">${s.score||''}</span>`}</div></div>`;
++ 832         }).join('');
++ 833       }
++ 834 
++ 835       // Trade log
++ 836       if (S.trades.length === 0) {
++ 837         el.tradeLog.innerHTML = '<p class="text-gray-600 text-center py-2">No trades</p>';
++ 838       } else {
++ 839         el.tradeLog.innerHTML = S.trades.slice(-20).reverse().map(t => 
++ 840           `<div class="flex justify-between p-0.5 rounded bg-black/30"><span>${t.symbol.replace('USDT','')} ${t.type}</span><span class="${t.pnl>=0?'profit':'loss'}">${t.pnl>=0?'+':''}$${t.pnl.toFixed(2)} ${t.reason}</span></div>`
++ 841         ).join('');
++ 842       }
++ 843 
++ 844       // Equity chart
++ 845       S.equity.push({ t: Date.now(), v: total });
++ 846       if (S.equity.length > 150) S.equity.shift();
++ 847       equityChart.data.labels = S.equity.map(() => '');
++ 848       equityChart.data.datasets[0].data = S.equity.map(e => e.v);
++ 849       equityChart.data.datasets[0].borderColor = pnl >= 0 ? '#00ff88' : '#ff2d55';
++ 850       equityChart.data.datasets[0].backgroundColor = pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,45,85,0.1)';
++ 851       equityChart.update('none');
++ 852 
++ 853       // P&L chart
++ 854       const recentPnl = S.trades.slice(-30).map(t => t.pnl);
++ 855       pnlChart.data.labels = recentPnl.map(() => '');
++ 856       pnlChart.data.datasets[0].data = recentPnl;
++ 857       pnlChart.data.datasets[0].backgroundColor = recentPnl.map(p => p >= 0 ? 'rgba(0,255,136,0.7)' : 'rgba(255,45,85,0.7)');
++ 858       pnlChart.update('none');
++ 859     }
++ 860 
++ 861     // ========== MAIN LOOP ==========
++ 862     async function loop() {
++ 863       const ok = await fetchData();
++ 864       if (ok) {
++ 865         trade();
++ 866         updateUI();
++ 867       }
++ 868     }
++ 869 
++ 870     // ========== AUTO START ==========
++ 871     (async function init() {
++ 872       console.log('🧠 Neural HFT 2026 Starting...');
++ 873       console.log('💰 Balance:', S.balance, '| Trades:', S.trades.length);
++ 874       
++ 875       await fetchData();
++ 876       updateUI();
++ 877       
++ 878       setInterval(loop, CFG.updateMs);
++ 879       setInterval(saveState, 3000);
++ 880     })();
++ 881   </script>
++ 882 </body>
++ 883 </html>
 
 
