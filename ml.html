@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML Crypto Bot - Z-Score & Advanced Indicators</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-green: #00ff88;
+      --neon-red: #ff3366;
+      --neon-blue: #00d4ff;
+      --neon-purple: #a855f7;
+      --bg-dark: #050508;
+      --bg-card: #0c0c12;
+    }
+    * { font-family: 'JetBrains Mono', monospace; }
+    .title-font { font-family: 'Orbitron', sans-serif; }
+    body { background: linear-gradient(135deg, #050508 0%, #0a0a12 50%, #050510 100%); }
+
+    .glow-green { text-shadow: 0 0 20px var(--neon-green); }
+    .glow-red { text-shadow: 0 0 20px var(--neon-red); }
+    .glow-blue { text-shadow: 0 0 15px var(--neon-blue); }
+
+    .card {
+      background: linear-gradient(145deg, rgba(12,12,18,0.95) 0%, rgba(8,8,14,0.98) 100%);
+      border: 1px solid rgba(0,212,255,0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .pulse-dot { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
+      50% { opacity: 0.5; box-shadow: 0 0 16px currentColor; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+    .signal-long {
+      background: linear-gradient(90deg, rgba(0,255,136,0.15), transparent);
+      border-left: 3px solid var(--neon-green);
+    }
+    .signal-short {
+      background: linear-gradient(90deg, rgba(255,51,102,0.15), transparent);
+      border-left: 3px solid var(--neon-red);
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    .indicator-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+      overflow: hidden;
+    }
+    .indicator-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .z-score-indicator {
+      position: relative;
+      height: 20px;
+      background: linear-gradient(90deg, #ff3366 0%, #333 35%, #333 65%, #00ff88 100%);
+      border-radius: 4px;
+    }
+    .z-marker {
+      position: absolute;
+      top: -2px;
+      width: 3px;
+      height: 24px;
+      background: white;
+      border-radius: 2px;
+      transform: translateX(-50%);
+      transition: left 0.2s ease;
+      box-shadow: 0 0 8px white;
+    }
+
+    .ml-badge {
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .loading-spinner {
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: var(--neon-blue);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="min-h-screen text-white p-3 md:p-4">
+  <!-- Header -->
+  <header class="mb-4 fade-in">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-2xl">
+          🧠
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold title-font glow-blue">ML TRADING BOT</h1>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="ml-badge">Z-SCORE</span>
+            <span class="ml-badge">RSI</span>
+            <span class="ml-badge">BOLLINGER</span>
+            <span class="ml-badge">MOMENTUM</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <span class="pulse-dot w-3 h-3 rounded-full" id="statusDot"></span>
+          <span class="text-sm" id="status">Connecting to Binance...</span>
+        </div>
+        <button onclick="toggleBot()" id="botToggle" class="px-5 py-2 rounded-lg font-bold transition-all bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30">
+          START
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+    <div class="card p-3 fade-in">
+      <p class="text-gray-500 text-xs uppercase">Balance</p>
+      <p class="text-lg font-bold" id="balance">$100.00</p>
+      <p class="text-xs" id="balanceChange">+0.00%</p>
+    </div>
+    <div class="card p-3 fade-in">
+      <p class="text-gray-500 text-xs uppercase">Positions</p>
+      <p class="text-lg font-bold text-blue-400" id="openPositions">0</p>
+      <p class="text-xs text-gray-500" id="positionValue">$0 used</p>
+    </div>
+    <div class="card p-3 fade-in">
+      <p class="text-gray-500 text-xs uppercase">Trades</p>
+      <p class="text-lg font-bold text-purple-400" id="totalTrades">0</p>
+      <p class="text-xs text-gray-500" id="winRate">0% win</p>
+    </div>
+    <div class="card p-3 fade-in">
+      <p class="text-gray-500 text-xs uppercase">P&L</p>
+      <p class="text-lg font-bold" id="pnl">$0.00</p>
+      <p class="text-xs" id="pnlPercent">0.00%</p>
+    </div>
+    <div class="card p-3 fade-in">
+      <p class="text-gray-500 text-xs uppercase">ML Score</p>
+      <p class="text-lg font-bold text-cyan-400" id="mlScore">--</p>
+      <p class="text-xs text-gray-500" id="signalCount">0 signals</p>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Market Table -->
+    <div class="lg:col-span-2 card p-3 fade-in">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-bold text-sm">📊 MARKET ANALYSIS (20 PAIRS)</h2>
+        <div class="flex items-center gap-2" id="dataStatus">
+          <div class="loading-spinner"></div>
+          <span class="text-xs text-gray-400">Loading...</span>
+        </div>
+      </div>
+      <div class="overflow-x-auto max-h-72 overflow-y-auto">
+        <table class="w-full text-xs">
+          <thead class="sticky top-0 bg-[#0c0c12] z-10">
+            <tr class="text-gray-500 uppercase border-b border-gray-800">
+              <th class="text-left py-2 px-1">Pair</th>
+              <th class="text-right px-1">Price</th>
+              <th class="text-center px-1">Z-Score</th>
+              <th class="text-center px-1">RSI</th>
+              <th class="text-center px-1">BB%</th>
+              <th class="text-center px-1">Mom</th>
+              <th class="text-center px-1">Signal</th>
+            </tr>
+          </thead>
+          <tbody id="marketTable">
+            <tr><td colspan="7" class="text-center py-8 text-gray-600">Waiting for data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="space-y-4">
+      <!-- Positions -->
+      <div class="card p-3 fade-in">
+        <h2 class="font-bold text-sm mb-3">📈 ACTIVE POSITIONS</h2>
+        <div id="positionsList" class="space-y-2 max-h-32 overflow-y-auto">
+          <p class="text-gray-600 text-xs text-center py-2">No positions</p>
+        </div>
+      </div>
+
+      <!-- Signals -->
+      <div class="card p-3 fade-in">
+        <h2 class="font-bold text-sm mb-3">🎯 ML SIGNALS</h2>
+        <div id="signalsList" class="space-y-2 max-h-32 overflow-y-auto">
+          <p class="text-gray-600 text-xs text-center py-2">Analyzing...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts & History -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <div class="card p-3 fade-in">
+      <h2 class="font-bold text-sm mb-2">💰 EQUITY CURVE</h2>
+      <canvas id="equityChart" height="140"></canvas>
+    </div>
+    <div class="card p-3 fade-in">
+      <h2 class="font-bold text-sm mb-2">📜 TRADE LOG</h2>
+      <div id="tradeHistory" class="space-y-1 max-h-36 overflow-y-auto text-xs">
+        <p class="text-gray-600 text-center py-4">No trades yet</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ML Settings -->
+  <div class="card p-3 mt-4 fade-in">
+    <h2 class="font-bold text-sm mb-2">🧠 ML PARAMETERS</h2>
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+      <div class="bg-black/40 rounded p-2">
+        <p class="text-gray-500">Z-Score</p>
+        <p class="font-bold text-cyan-400">±1.5σ</p>
+      </div>
+      <div class="bg-black/40 rounded p-2">
+        <p class="text-gray-500">RSI</p>
+        <p class="font-bold text-yellow-400">25/75</p>
+      </div>
+      <div class="bg-black/40 rounded p-2">
+        <p class="text-gray-500">BB Width</p>
+        <p class="font-bold text-purple-400">2.0σ</p>
+      </div>
+      <div class="bg-black/40 rounded p-2">
+        <p class="text-gray-500">Momentum</p>
+        <p class="font-bold text-green-400">±0.5%</p>
+      </div>
+      <div class="bg-black/40 rounded p-2">
+        <p class="text-gray-500">TP/SL</p>
+        <p class="font-bold text-blue-400">0.6/0.4%</p>
+      </div>
+      <div class="bg-black/40 rounded p-2">
+        <p class="text-gray-500">Speed</p>
+        <p class="font-bold text-red-400">500ms</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== CONFIG =====
+    const CONFIG = {
+      initialBalance: 100,
+      symbols: [
+        'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT',
+        'DOGEUSDT', 'SOLUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT',
+        'SHIBUSDT', 'AVAXUSDT', 'LINKUSDT', 'ATOMUSDT', 'UNIUSDT',
+        'ETCUSDT', 'XLMUSDT', 'NEARUSDT', 'APTUSDT', 'ARBUSDT'
+      ],
+      // ML Thresholds - AGGRESSIVE
+      zScoreThreshold: 1.5,
+      rsiOversold: 25,
+      rsiOverbought: 75,
+      bbThreshold: 0.1,
+      momentumThreshold: 0.005,
+      // Trading
+      takeProfit: 0.006,
+      stopLoss: 0.004,
+      maxPositionSize: 0.10,
+      maxPositions: 6,
+      lookbackPeriod: 20,
+      updateInterval: 500
+    };
+
+    // ===== STATE =====
+    let state = {
+      balance: CONFIG.initialBalance,
+      startBalance: CONFIG.initialBalance,
+      positions: [],
+      trades: [],
+      signals: [],
+      priceHistory: {},
+      marketData: {},
+      indicators: {},
+      isRunning: false,
+      equityHistory: [{ t: Date.now(), v: CONFIG.initialBalance }],
+      connected: false,
+      lastUpdate: 0
+    };
+
+    // Initialize price history
+    CONFIG.symbols.forEach(s => { state.priceHistory[s] = []; });
+
+    // ===== DOM =====
+    const el = {
+      balance: document.getElementById('balance'),
+      balanceChange: document.getElementById('balanceChange'),
+      openPositions: document.getElementById('openPositions'),
+      positionValue: document.getElementById('positionValue'),
+      totalTrades: document.getElementById('totalTrades'),
+      winRate: document.getElementById('winRate'),
+      pnl: document.getElementById('pnl'),
+      pnlPercent: document.getElementById('pnlPercent'),
+      mlScore: document.getElementById('mlScore'),
+      signalCount: document.getElementById('signalCount'),
+      marketTable: document.getElementById('marketTable'),
+      positionsList: document.getElementById('positionsList'),
+      signalsList: document.getElementById('signalsList'),
+      tradeHistory: document.getElementById('tradeHistory'),
+      status: document.getElementById('status'),
+      statusDot: document.getElementById('statusDot'),
+      botToggle: document.getElementById('botToggle'),
+      dataStatus: document.getElementById('dataStatus')
+    };
+
+    // ===== CHART =====
+    const ctx = document.getElementById('equityChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          borderColor: '#00d4ff',
+          backgroundColor: 'rgba(0,212,255,0.1)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.03)' },
+            ticks: { color: '#666', font: { size: 10 }, callback: v => '$' + v.toFixed(0) }
+          }
+        },
+        animation: false
+      }
+    });
+
+    // ===== BINANCE DATA FETCHING =====
+    async function fetchBinanceData() {
+      try {
+        // Fetch 24hr ticker data
+        const tickerRes = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+        if (!tickerRes.ok) throw new Error('Ticker fetch failed');
+        const tickerData = await tickerRes.json();
+
+        // Fetch klines for each symbol in parallel
+        const klinePromises = CONFIG.symbols.map(async (symbol) => {
+          try {
+            const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=${CONFIG.lookbackPeriod}`);
+            if (!res.ok) return null;
+            return { symbol, data: await res.json() };
+          } catch (e) {
+            return null;
+          }
+        });
+
+        const klineResults = await Promise.all(klinePromises);
+
+        // Process ticker data
+        CONFIG.symbols.forEach(symbol => {
+          const ticker = tickerData.find(t => t.symbol === symbol);
+          if (ticker) {
+            const price = parseFloat(ticker.lastPrice);
+            state.marketData[symbol] = {
+              price,
+              change24h: parseFloat(ticker.priceChangePercent),
+              high24h: parseFloat(ticker.highPrice),
+              low24h: parseFloat(ticker.lowPrice),
+              volume: parseFloat(ticker.quoteVolume)
+            };
+
+            // Add to price history
+            state.priceHistory[symbol].push(price);
+            if (state.priceHistory[symbol].length > CONFIG.lookbackPeriod) {
+              state.priceHistory[symbol].shift();
+            }
+          }
+        });
+
+        // Process kline data for better indicators
+        klineResults.forEach(result => {
+          if (result && result.data) {
+            const closes = result.data.map(k => parseFloat(k[4]));
+            const highs = result.data.map(k => parseFloat(k[2]));
+            const lows = result.data.map(k => parseFloat(k[3]));
+            const volumes = result.data.map(k => parseFloat(k[5]));
+
+            if (closes.length >= 5) {
+              state.priceHistory[result.symbol] = closes;
+              calculateIndicators(result.symbol, closes, highs, lows, volumes);
+            }
+          }
+        });
+
+        state.connected = true;
+        state.lastUpdate = Date.now();
+
+        el.status.textContent = 'BINANCE LIVE';
+        el.status.className = 'text-sm text-green-400 glow-green';
+        el.statusDot.className = 'pulse-dot w-3 h-3 rounded-full bg-green-500 text-green-500';
+        el.dataStatus.innerHTML = '<span class="text-xs text-green-400">● Live Data</span>';
+
+        return true;
+      } catch (error) {
+        console.error('Binance fetch error:', error);
+        el.status.textContent = 'CONNECTION ERROR';
+        el.status.className = 'text-sm text-red-400';
+        el.statusDot.className = 'pulse-dot w-3 h-3 rounded-full bg-red-500 text-red-500';
+        el.dataStatus.innerHTML = '<span class="text-xs text-red-400">● Retrying...</span>';
+        return false;
+      }
+    }
+
+    // ===== ML INDICATORS =====
+    function calculateIndicators(symbol, closes, highs, lows, volumes) {
+      if (closes.length < 5) return;
+
+      const n = closes.length;
+      const price = closes[n - 1];
+
+      // 1. Z-SCORE (Statistical deviation from mean)
+      const mean = closes.reduce((a, b) => a + b, 0) / n;
+      const variance = closes.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+      const stdDev = Math.sqrt(variance);
+      const zScore = stdDev > 0 ? (price - mean) / stdDev : 0;
+
+      // 2. RSI (Relative Strength Index)
+      let gains = 0, losses = 0;
+      for (let i = 1; i < n; i++) {
+        const change = closes[i] - closes[i - 1];
+        if (change > 0) gains += change;
+        else losses -= change;
+      }
+      const avgGain = gains / (n - 1);
+      const avgLoss = losses / (n - 1);
+      const rs = avgLoss > 0 ? avgGain / avgLoss : 100;
+      const rsi = 100 - (100 / (1 + rs));
+
+      // 3. BOLLINGER BANDS
+      const bbUpper = mean + (2 * stdDev);
+      const bbLower = mean - (2 * stdDev);
+      const bbWidth = bbUpper - bbLower;
+      const bbPercent = bbWidth > 0 ? (price - bbLower) / bbWidth : 0.5;
+
+      // 4. MOMENTUM (Rate of Change)
+      const momentum = n >= 5 ? (price - closes[n - 5]) / closes[n - 5] : 0;
+
+      // 5. VOLUME Z-SCORE
+      const volMean = volumes.reduce((a, b) => a + b, 0) / volumes.length;
+      const volStd = Math.sqrt(volumes.reduce((a, b) => a + Math.pow(b - volMean, 2), 0) / volumes.length);
+      const volZScore = volStd > 0 ? (volumes[volumes.length - 1] - volMean) / volStd : 0;
+
+      // 6. PRICE VELOCITY (Acceleration)
+      const velocity = n >= 3 ? ((closes[n-1] - closes[n-2]) - (closes[n-2] - closes[n-3])) / closes[n-3] * 100 : 0;
+
+      // 7. ML COMPOSITE SCORE (-100 to +100)
+      let mlScore = 0;
+
+      // Z-Score contribution (mean reversion signal)
+      if (zScore < -CONFIG.zScoreThreshold) mlScore += 30;
+      else if (zScore > CONFIG.zScoreThreshold) mlScore -= 30;
+
+      // RSI contribution
+      if (rsi < CONFIG.rsiOversold) mlScore += 25;
+      else if (rsi > CONFIG.rsiOverbought) mlScore -= 25;
+
+      // Bollinger contribution
+      if (bbPercent < CONFIG.bbThreshold) mlScore += 20;
+      else if (bbPercent > (1 - CONFIG.bbThreshold)) mlScore -= 20;
+
+      // Momentum contribution (trend following)
+      if (momentum > CONFIG.momentumThreshold) mlScore += 15;
+      else if (momentum < -CONFIG.momentumThreshold) mlScore -= 15;
+
+      // Volume confirmation
+      if (volZScore > 1) mlScore *= 1.2;
+
+      // Velocity boost
+      mlScore += velocity * 5;
+
+      mlScore = Math.max(-100, Math.min(100, mlScore));
+
+      state.indicators[symbol] = {
+        zScore,
+        rsi,
+        bbPercent,
+        bbUpper,
+        bbLower,
+        momentum,
+        volZScore,
+        velocity,
+        mlScore,
+        mean,
+        stdDev
+      };
+    }
+
+    // ===== TRADING LOGIC =====
+    function analyzeAndTrade() {
+      if (!state.isRunning || !state.connected) return;
+
+      let activeSignals = 0;
+
+      CONFIG.symbols.forEach(symbol => {
+        const m = state.marketData[symbol];
+        const ind = state.indicators[symbol];
+        if (!m || !ind) return;
+
+        const hasPosition = state.positions.find(p => p.symbol === symbol);
+        if (hasPosition) return;
+        if (state.positions.length >= CONFIG.maxPositions) return;
+
+        let signal = null;
+
+        // LONG Signal: Strong buy indicators
+        if (ind.mlScore > 40 && ind.zScore < -1.0 && ind.rsi < 35) {
+          signal = { type: 'LONG', symbol, price: m.price, score: ind.mlScore, reason: 'ML Buy' };
+        }
+        // SHORT Signal: Strong sell indicators
+        else if (ind.mlScore < -40 && ind.zScore > 1.0 && ind.rsi > 65) {
+          signal = { type: 'SHORT', symbol, price: m.price, score: ind.mlScore, reason: 'ML Sell' };
+        }
+        // Quick scalp on extreme Z-Score
+        else if (ind.zScore < -CONFIG.zScoreThreshold && ind.bbPercent < 0.15) {
+          signal = { type: 'LONG', symbol, price: m.price, score: ind.mlScore, reason: 'Z-Score Dip' };
+        }
+        else if (ind.zScore > CONFIG.zScoreThreshold && ind.bbPercent > 0.85) {
+          signal = { type: 'SHORT', symbol, price: m.price, score: ind.mlScore, reason: 'Z-Score Peak' };
+        }
+
+        if (signal) {
+          executeTrade(signal);
+          activeSignals++;
+        }
+      });
+
+      el.signalCount.textContent = activeSignals + ' active';
+      checkPositions();
+    }
+
+    function executeTrade(signal) {
+      const size = state.balance * CONFIG.maxPositionSize;
+      if (size < 0.5) return;
+
+      const qty = size / signal.price;
+      const isLong = signal.type === 'LONG';
+
+      const position = {
+        id: Date.now() + Math.random(),
+        symbol: signal.symbol,
+        type: signal.type,
+        entry: signal.price,
+        qty,
+        size,
+        time: Date.now(),
+        tp: isLong ? signal.price * (1 + CONFIG.takeProfit) : signal.price * (1 - CONFIG.takeProfit),
+        sl: isLong ? signal.price * (1 - CONFIG.stopLoss) : signal.price * (1 + CONFIG.stopLoss),
+        reason: signal.reason
+      };
+
+      state.positions.push(position);
+      state.balance -= size;
+
+      addSignal({
+        type: signal.type,
+        symbol: signal.symbol,
+        price: signal.price,
+        score: signal.score,
+        reason: signal.reason,
+        action: 'OPEN',
+        time: Date.now()
+      });
+    }
+
+    function checkPositions() {
+      const toClose = [];
+
+      state.positions.forEach(pos => {
+        const m = state.marketData[pos.symbol];
+        if (!m) return;
+
+        const price = m.price;
+        let close = false;
+        let reason = '';
+        const isLong = pos.type === 'LONG';
+
+        if (isLong) {
+          if (price >= pos.tp) { close = true; reason = 'TP'; }
+          else if (price <= pos.sl) { close = true; reason = 'SL'; }
+        } else {
+          if (price <= pos.tp) { close = true; reason = 'TP'; }
+          else if (price >= pos.sl) { close = true; reason = 'SL'; }
+        }
+
+        if (close) {
+          const pnl = isLong
+            ? (price - pos.entry) * pos.qty
+            : (pos.entry - price) * pos.qty;
+
+          state.balance += pos.size + pnl;
+
+          state.trades.push({
+            id: Date.now(),
+            symbol: pos.symbol,
+            type: pos.type,
+            entry: pos.entry,
+            exit: price,
+            pnl,
+            pnlPct: (pnl / pos.size) * 100,
+            reason,
+            time: Date.now()
+          });
+
+          addSignal({
+            type: 'CLOSE',
+            symbol: pos.symbol,
+            price,
+            pnl,
+            reason,
+            action: reason,
+            time: Date.now()
+          });
+
+          toClose.push(pos.id);
+        }
+      });
+
+      state.positions = state.positions.filter(p => !toClose.includes(p.id));
+    }
+
+    function addSignal(sig) {
+      state.signals.unshift(sig);
+      if (state.signals.length > 20) state.signals.pop();
+    }
+
+    // ===== UI UPDATE =====
+    function updateUI() {
+      const posValue = state.positions.reduce((sum, p) => {
+        const m = state.marketData[p.symbol];
+        return sum + (m ? p.qty * m.price : p.size);
+      }, 0);
+
+      const totalValue = state.balance + posValue;
+      const totalPnL = totalValue - state.startBalance;
+      const pnlPct = (totalPnL / state.startBalance) * 100;
+
+      // Stats
+      el.balance.textContent = '$' + totalValue.toFixed(2);
+      el.balanceChange.textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
+      el.balanceChange.className = 'text-xs ' + (pnlPct >= 0 ? 'text-green-400' : 'text-red-400');
+
+      el.openPositions.textContent = state.positions.length;
+      el.positionValue.textContent = '$' + posValue.toFixed(0) + ' used';
+
+      const wins = state.trades.filter(t => t.pnl > 0).length;
+      el.totalTrades.textContent = state.trades.length;
+      el.winRate.textContent = state.trades.length > 0 ? Math.round(wins / state.trades.length * 100) + '% win' : '0% win';
+
+      const realizedPnL = state.trades.reduce((s, t) => s + t.pnl, 0);
+      el.pnl.textContent = (realizedPnL >= 0 ? '+$' : '-$') + Math.abs(realizedPnL).toFixed(2);
+      el.pnl.className = 'text-lg font-bold ' + (realizedPnL >= 0 ? 'text-green-400' : 'text-red-400');
+      el.pnlPercent.textContent = ((realizedPnL / state.startBalance) * 100).toFixed(2) + '%';
+      el.pnlPercent.className = 'text-xs ' + (realizedPnL >= 0 ? 'text-green-400' : 'text-red-400');
+
+      // ML Score average
+      const scores = Object.values(state.indicators).map(i => i?.mlScore || 0);
+      const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+      el.mlScore.textContent = avgScore.toFixed(0);
+      el.mlScore.className = 'text-lg font-bold ' + (avgScore > 0 ? 'text-green-400' : avgScore < 0 ? 'text-red-400' : 'text-gray-400');
+
+      // Market Table
+      let rows = '';
+      CONFIG.symbols.forEach(symbol => {
+        const m = state.marketData[symbol];
+        const ind = state.indicators[symbol];
+        if (!m) return;
+
+        const hasPos = state.positions.find(p => p.symbol === symbol);
+        const zScore = ind?.zScore || 0;
+        const rsi = ind?.rsi || 50;
+        const bbPct = ind?.bbPercent || 0.5;
+        const mom = ind?.momentum || 0;
+        const mlScore = ind?.mlScore || 0;
+
+        // Z-Score position (0-100%)
+        const zPos = Math.max(0, Math.min(100, 50 + (zScore * 20)));
+
+        // Signal determination
+        let signal = '';
+        if (mlScore > 40 && zScore < -1.0) {
+          signal = '<span class="text-xs font-bold px-1.5 py-0.5 rounded bg-green-500/30 text-green-400">LONG</span>';
+        } else if (mlScore < -40 && zScore > 1.0) {
+          signal = '<span class="text-xs font-bold px-1.5 py-0.5 rounded bg-red-500/30 text-red-400">SHORT</span>';
+        }
+
+        rows += `
+          <tr class="border-b border-gray-800/30 hover:bg-white/5">
+            <td class="py-1.5 px-1">
+              <span class="font-bold">${symbol.replace('USDT', '')}</span>
+              ${hasPos ? '<span class="ml-1 text-blue-400">●</span>' : ''}
+            </td>
+            <td class="text-right px-1 ${m.change24h >= 0 ? 'text-green-400' : 'text-red-400'}">
+              $${m.price > 1 ? m.price.toFixed(2) : m.price.toFixed(5)}
+            </td>
+            <td class="px-1">
+              <div class="z-score-indicator w-14 mx-auto">
+                <div class="z-marker" style="left: ${zPos}%"></div>
+              </div>
+            </td>
+            <td class="text-center px-1 ${rsi < 30 ? 'text-green-400' : rsi > 70 ? 'text-red-400' : 'text-gray-400'}">
+              ${rsi.toFixed(0)}
+            </td>
+            <td class="text-center px-1 ${bbPct < 0.2 ? 'text-green-400' : bbPct > 0.8 ? 'text-red-400' : 'text-gray-400'}">
+              ${(bbPct * 100).toFixed(0)}%
+            </td>
+            <td class="text-center px-1 ${mom > 0 ? 'text-green-400' : 'text-red-400'}">
+              ${(mom * 100).toFixed(2)}%
+            </td>
+            <td class="text-center px-1">${signal || '<span class="text-gray-700">—</span>'}</td>
+          </tr>
+        `;
+      });
+      el.marketTable.innerHTML = rows || '<tr><td colspan="7" class="text-center py-4 text-gray-600">Waiting for Binance data...</td></tr>';
+
+      // Positions
+      if (state.positions.length === 0) {
+        el.positionsList.innerHTML = '<p class="text-gray-600 text-xs text-center py-2">No positions</p>';
+      } else {
+        el.positionsList.innerHTML = state.positions.map(p => {
+          const m = state.marketData[p.symbol];
+          const curr = m ? m.price : p.entry;
+          const pnl = p.type === 'LONG' ? (curr - p.entry) * p.qty : (p.entry - curr) * p.qty;
+          const pnlPct = (pnl / p.size) * 100;
+          return `
+            <div class="p-2 rounded ${pnl >= 0 ? 'signal-long' : 'signal-short'}">
+              <div class="flex justify-between text-xs">
+                <span class="font-bold">${p.symbol.replace('USDT', '')}
+                  <span class="${p.type === 'LONG' ? 'text-green-400' : 'text-red-400'}">${p.type}</span>
+                </span>
+                <span class="${pnl >= 0 ? 'text-green-400' : 'text-red-400'}">${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Signals
+      if (state.signals.length === 0) {
+        el.signalsList.innerHTML = '<p class="text-gray-600 text-xs text-center py-2">Analyzing...</p>';
+      } else {
+        el.signalsList.innerHTML = state.signals.slice(0, 5).map(s => {
+          const isLong = s.type === 'LONG';
+          const isClose = s.type === 'CLOSE';
+          return `
+            <div class="p-1.5 rounded text-xs ${isClose ? (s.pnl >= 0 ? 'signal-long' : 'signal-short') : (isLong ? 'signal-long' : 'signal-short')}">
+              <div class="flex justify-between">
+                <span class="font-bold">${s.symbol.replace('USDT', '')} ${s.type}</span>
+                ${s.pnl !== undefined
+                  ? `<span class="${s.pnl >= 0 ? 'text-green-400' : 'text-red-400'}">${s.pnl >= 0 ? '+' : ''}$${s.pnl.toFixed(2)}</span>`
+                  : `<span class="text-gray-500">${s.reason || ''}</span>`
+                }
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Trade History
+      if (state.trades.length === 0) {
+        el.tradeHistory.innerHTML = '<p class="text-gray-600 text-center py-4">No trades yet</p>';
+      } else {
+        el.tradeHistory.innerHTML = state.trades.slice(-10).reverse().map(t => `
+          <div class="flex justify-between p-1.5 rounded bg-black/30">
+            <span>${t.symbol.replace('USDT', '')} <span class="text-gray-600">${t.type}</span></span>
+            <span class="${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}">${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)} <span class="text-gray-600">${t.reason}</span></span>
+          </div>
+        `).join('');
+      }
+
+      // Equity Chart
+      state.equityHistory.push({ t: Date.now(), v: totalValue });
+      if (state.equityHistory.length > 100) state.equityHistory.shift();
+
+      chart.data.labels = state.equityHistory.map(() => '');
+      chart.data.datasets[0].data = state.equityHistory.map(h => h.v);
+      chart.data.datasets[0].borderColor = totalPnL >= 0 ? '#00ff88' : '#ff3366';
+      chart.data.datasets[0].backgroundColor = totalPnL >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,51,102,0.1)';
+      chart.update('none');
+    }
+
+    // ===== BOT CONTROL =====
+    function toggleBot() {
+      state.isRunning = !state.isRunning;
+      if (state.isRunning) {
+        el.botToggle.textContent = 'STOP';
+        el.botToggle.className = 'px-5 py-2 rounded-lg font-bold transition-all bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30';
+      } else {
+        el.botToggle.textContent = 'START';
+        el.botToggle.className = 'px-5 py-2 rounded-lg font-bold transition-all bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30';
+      }
+    }
+
+    // ===== MAIN LOOP =====
+    async function mainLoop() {
+      await fetchBinanceData();
+      analyzeAndTrade();
+      updateUI();
+    }
+
+    // ===== INIT =====
+    (async function init() {
+      // Initial fetch
+      await fetchBinanceData();
+      updateUI();
+
+      // Fast loop
+      setInterval(mainLoop, CONFIG.updateInterval);
+    })();
+  </script>
+</body>
+</html>
+
