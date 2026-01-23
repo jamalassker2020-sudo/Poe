@@ -4,282 +4,654 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ML Crypto Bot - Real Binance Data</title>
+  <title>Auto ML Crypto Bot - Railway Ready</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
   <style>
-    :root { --neon-green: #00ff88; --neon-red: #ff3366; --neon-blue: #00d4ff; --bg-dark: #050508; }
+    :root {
+      --g: #00ff88;
+      --r: #ff3366;
+      --b: #00d4ff;
+      --p: #a855f7;
+    }
     * { font-family: 'JetBrains Mono', monospace; }
-    .title-font { font-family: 'Orbitron', sans-serif; }
-    body { background: #050508; color: white; }
-    .card { background: #0c0c12; border: 1px solid rgba(0,212,255,0.1); border-radius: 12px; }
-    .glow-blue { text-shadow: 0 0 15px var(--neon-blue); }
-    .pulse-dot { animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .z-score-indicator { position: relative; height: 12px; background: #222; border-radius: 6px; overflow: hidden; }
-    .z-marker { position: absolute; width: 4px; height: 100%; background: var(--neon-blue); transition: left 0.3s ease; }
-    .signal-long { border-left: 3px solid var(--neon-green); background: rgba(0,255,136,0.05); }
-    .signal-short { border-left: 3px solid var(--neon-red); background: rgba(255,51,102,0.05); }
+    .title { font-family: 'Orbitron', sans-serif; }
+    body { background: linear-gradient(180deg, #0a0a0f 0%, #0d0d14 100%); min-height: 100vh; }
+
+    .card {
+      background: rgba(12,12,18,0.9);
+      border: 1px solid rgba(0,255,136,0.1);
+      border-radius: 10px;
+    }
+
+    .live-dot {
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .glow { text-shadow: 0 0 20px currentColor; }
+
+    .long-bg { background: linear-gradient(90deg, rgba(0,255,136,0.2), transparent); border-left: 3px solid var(--g); }
+    .short-bg { background: linear-gradient(90deg, rgba(255,51,102,0.2), transparent); border-left: 3px solid var(--r); }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+    .obi-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--r), #222 50%, var(--g));
+    }
+    .obi-marker {
+      width: 3px;
+      height: 14px;
+      background: #fff;
+      border-radius: 2px;
+      box-shadow: 0 0 6px #fff;
+    }
+
+    .profit { color: var(--g); }
+    .loss { color: var(--r); }
   </style>
 </head>
-<body class="p-4">
-  <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-    <div class="flex items-center gap-4">
-      <div class="text-3xl">🤖</div>
+<body class="text-white p-2 md:p-4">
+  <!-- Header -->
+  <header class="flex flex-wrap items-center justify-between gap-2 mb-3">
+    <div class="flex items-center gap-2">
+      <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-cyan-500 flex items-center justify-center text-xl">⚡</div>
       <div>
-        <h1 class="text-2xl font-bold title-font glow-blue">BINANCE ML-LIVE</h1>
-        <div class="flex gap-2 text-[10px] mt-1">
-          <span class="bg-blue-500/20 px-2 py-0.5 rounded text-blue-400 border border-blue-500/30">REAL-TIME DATA</span>
-          <span class="bg-purple-500/20 px-2 py-0.5 rounded text-purple-400 border border-purple-500/30">Z-SCORE ENGINE</span>
-        </div>
+        <h1 class="text-lg md:text-xl font-bold title text-cyan-400 glow">AUTO TRADER</h1>
+        <p class="text-[10px] text-gray-500">OBI + VWAP | Railway Ready | Persistent</p>
       </div>
     </div>
-    <div class="flex items-center gap-4">
-      <div class="text-right">
-        <div class="flex items-center justify-end gap-2">
-          <span id="statusDot" class="w-2 h-2 rounded-full bg-gray-500 pulse-dot"></span>
-          <span id="status" class="text-xs text-gray-400">CONNECTING...</span>
-        </div>
-        <div id="apiTimer" class="text-[10px] text-gray-600">Syncing Binance API...</div>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5">
+        <span class="live-dot w-2.5 h-2.5 rounded-full bg-green-500"></span>
+        <span class="text-xs text-green-400" id="status">CONNECTING...</span>
       </div>
-      <button onclick="toggleBot()" id="botToggle" class="bg-green-500 hover:bg-green-600 text-black font-bold py-2 px-6 rounded-lg transition-all">START BOT</button>
+      <button onclick="resetBot()" class="text-xs px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-400">RESET</button>
     </div>
   </header>
 
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <div class="card p-4 text-center">
-      <p class="text-gray-500 text-[10px] uppercase">Equity (Paper)</p>
-      <p id="balance" class="text-xl font-bold">$100.00</p>
+  <!-- Stats -->
+  <div class="grid grid-cols-3 md:grid-cols-6 gap-2 mb-3">
+    <div class="card p-2">
+      <p class="text-[10px] text-gray-500 uppercase">Balance</p>
+      <p class="text-sm font-bold" id="balance">$100.00</p>
     </div>
-    <div class="card p-4 text-center">
-      <p class="text-gray-500 text-[10px] uppercase">Active Trades</p>
-      <p id="openPositions" class="text-xl font-bold text-blue-400">0</p>
+    <div class="card p-2">
+      <p class="text-[10px] text-gray-500 uppercase">P&L</p>
+      <p class="text-sm font-bold" id="pnl">$0.00</p>
     </div>
-    <div class="card p-4 text-center">
-      <p class="text-gray-500 text-[10px] uppercase">Realized PnL</p>
-      <p id="pnl" class="text-xl font-bold text-gray-400">$0.00</p>
+    <div class="card p-2">
+      <p class="text-[10px] text-gray-500 uppercase">Positions</p>
+      <p class="text-sm font-bold text-blue-400" id="positions">0</p>
     </div>
-    <div class="card p-4 text-center">
-      <p class="text-gray-500 text-[10px] uppercase">Win Rate</p>
-      <p id="winRate" class="text-xl font-bold text-purple-400">0%</p>
+    <div class="card p-2">
+      <p class="text-[10px] text-gray-500 uppercase">Trades</p>
+      <p class="text-sm font-bold text-purple-400" id="trades">0</p>
+    </div>
+    <div class="card p-2">
+      <p class="text-[10px] text-gray-500 uppercase">Win Rate</p>
+      <p class="text-sm font-bold text-yellow-400" id="winrate">0%</p>
+    </div>
+    <div class="card p-2">
+      <p class="text-[10px] text-gray-500 uppercase">Uptime</p>
+      <p class="text-sm font-bold text-gray-400" id="uptime">0:00</p>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2 card p-4">
-      <h2 class="text-xs font-bold mb-4 flex justify-between uppercase">
-        <span>Market Analysis (Top 20)</span>
-        <span class="text-gray-500" id="lastUpdate">--</span>
-      </h2>
-      <div class="overflow-x-auto">
+  <!-- Main -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+    <!-- Market -->
+    <div class="lg:col-span-2 card p-2">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-xs font-bold">📊 TOP 10 CRYPTO</h2>
+        <span class="text-[10px] text-gray-500" id="lastUpdate">--</span>
+      </div>
+      <div class="overflow-auto max-h-64">
         <table class="w-full text-[11px]">
-          <thead>
-            <tr class="text-gray-500 border-b border-gray-800 text-left">
-              <th class="pb-2">Symbol</th>
-              <th class="pb-2">Price</th>
-              <th class="pb-2">Z-Score (Volatility)</th>
-              <th class="pb-2">RSI</th>
-              <th class="pb-2 text-right">Action</th>
+          <thead class="sticky top-0 bg-[#0c0c12]">
+            <tr class="text-gray-500 border-b border-gray-800">
+              <th class="text-left py-1.5 px-1">PAIR</th>
+              <th class="text-right px-1">PRICE</th>
+              <th class="text-center px-1">OBI</th>
+              <th class="text-center px-1">VWAP%</th>
+              <th class="text-center px-1">SIGNAL</th>
             </tr>
           </thead>
-          <tbody id="marketTable" class="divide-y divide-gray-800/50">
-            </tbody>
+          <tbody id="marketTable"></tbody>
         </table>
       </div>
     </div>
 
-    <div class="space-y-4">
-      <div class="card p-4 h-64 overflow-y-auto">
-        <h2 class="text-xs font-bold mb-3 uppercase">Active Positions</h2>
-        <div id="positionsList" class="space-y-2"></div>
+    <!-- Right -->
+    <div class="space-y-3">
+      <div class="card p-2">
+        <h2 class="text-xs font-bold mb-2">📈 POSITIONS</h2>
+        <div id="positionsList" class="space-y-1 max-h-24 overflow-auto text-[11px]">
+          <p class="text-gray-600 text-center py-2">No positions</p>
+        </div>
       </div>
-      <div class="card p-4 h-64 overflow-y-auto">
-        <h2 class="text-xs font-bold mb-3 uppercase">Trade History</h2>
-        <div id="tradeHistory" class="space-y-1 text-[10px]"></div>
+      <div class="card p-2">
+        <h2 class="text-xs font-bold mb-2">🎯 SIGNALS</h2>
+        <div id="signalsList" class="space-y-1 max-h-24 overflow-auto text-[11px]">
+          <p class="text-gray-600 text-center py-2">Waiting...</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="card mt-6 p-4">
-    <canvas id="equityChart" height="150"></canvas>
+  <!-- Chart & History -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+    <div class="card p-2">
+      <h2 class="text-xs font-bold mb-1">💰 EQUITY</h2>
+      <canvas id="chart" height="100"></canvas>
+    </div>
+    <div class="card p-2">
+      <h2 class="text-xs font-bold mb-1">📜 HISTORY</h2>
+      <div id="history" class="space-y-1 max-h-28 overflow-auto text-[10px]">
+        <p class="text-gray-600 text-center py-3">No trades</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config -->
+  <div class="card p-2 mt-3">
+    <div class="grid grid-cols-4 md:grid-cols-8 gap-2 text-[10px]">
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">OBI</p>
+        <p class="font-bold text-cyan-400">±5%</p>
+      </div>
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">VWAP</p>
+        <p class="font-bold text-purple-400">±0.1%</p>
+      </div>
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">TP</p>
+        <p class="font-bold text-green-400">+0.5%</p>
+      </div>
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">SL</p>
+        <p class="font-bold text-red-400">-0.35%</p>
+      </div>
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">Size</p>
+        <p class="font-bold text-blue-400">12%</p>
+      </div>
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">Max Pos</p>
+        <p class="font-bold text-yellow-400">5</p>
+      </div>
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">Speed</p>
+        <p class="font-bold text-orange-400">400ms</p>
+      </div>
+      <div class="bg-black/40 rounded p-1.5 text-center">
+        <p class="text-gray-500">Mode</p>
+        <p class="font-bold text-green-400">AUTO</p>
+      </div>
+    </div>
   </div>
 
   <script>
-    const CONFIG = {
-      symbols: ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','AVAXUSDT','DOTUSDT','LINKUSDT','MATICUSDT','SHIBUSDT','LTCUSDT','UNIUSDT','NEARUSDT','APTUSDT','ARBUSDT','ATOMUSDT','XLMUSDT','ETCUSDT'],
-      lookback: 30, // Minutes
-      zThreshold: 2.0,
-      rsiLow: 30,
-      rsiHigh: 70,
-      tp: 0.008, // 0.8%
-      sl: 0.005, // 0.5%
-      riskPerTrade: 10 // $10 per position
-    };
-
-    let state = {
-      isRunning: false,
+    // ===== CONFIG - SUPER AGGRESSIVE =====
+    const CFG = {
       balance: 100,
-      realizedPnL: 0,
-      positions: [],
-      history: [],
-      market: {},
-      equityData: []
+      symbols: ['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','LINKUSDT','DOTUSDT'],
+      obiThreshold: 0.05,      // 5% - very loose
+      vwapDeviation: 0.001,    // 0.1% - very loose
+      takeProfit: 0.005,       // 0.5% TP - fast close
+      stopLoss: 0.0035,        // 0.35% SL - tight
+      positionSize: 0.12,      // 12% per trade
+      maxPositions: 5,
+      updateMs: 400            // 400ms updates
     };
 
-    // Initialize market object
-    CONFIG.symbols.forEach(s => state.market[s] = { prices: [], rsi: 50, zScore: 0, current: 0 });
+    // ===== STATE WITH PERSISTENCE =====
+    let S = loadState() || {
+      balance: CFG.balance,
+      startBalance: CFG.balance,
+      positions: [],
+      trades: [],
+      signals: [],
+      equity: [{t:Date.now(),v:CFG.balance}],
+      startTime: Date.now()
+    };
 
-    const chart = new Chart(document.getElementById('equityChart'), {
-      type: 'line',
-      data: { labels: [], datasets: [{ label: 'Equity', data: [], borderColor: '#00d4ff', tension: 0.3, fill: true, backgroundColor: 'rgba(0,212,255,0.05)' }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#111' } } } }
-    });
+    let market = {};
+    let indicators = {};
 
-    async function updateMarketData() {
+    // ===== PERSISTENCE via URL HASH =====
+    function saveState() {
       try {
-        // Fetch current prices
-        const priceRes = await fetch('https://api.binance.com/api/v3/ticker/price');
-        const prices = await priceRes.json();
-        
-        const updates = CONFIG.symbols.map(async (symbol) => {
-          const pData = prices.find(p => p.symbol === symbol);
-          if (!pData) return;
+        const data = {
+          b: Math.round(S.balance * 100) / 100,
+          sb: S.startBalance,
+          p: S.positions.map(p => ({
+            id: p.id, s: p.symbol, t: p.type, e: p.entry, q: p.qty, sz: p.size, tp: p.tp, sl: p.sl
+          })),
+          tr: S.trades.slice(-50).map(t => ({
+            s: t.symbol, t: t.type, pnl: Math.round(t.pnl * 100) / 100, r: t.reason
+          })),
+          st: S.startTime
+        };
+        const encoded = btoa(JSON.stringify(data));
+        history.replaceState(null, '', '#' + encoded);
+      } catch(e) {}
+    }
 
-          state.market[symbol].current = parseFloat(pData.price);
-
-          // Get candle data for indicators
-          const candleRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=${CONFIG.lookback}`);
-          const candles = await candleRes.json();
-          const closes = candles.map(c => parseFloat(c[4]));
-
-          // Z-Score calculation
-          const mean = closes.reduce((a, b) => a + b) / closes.length;
-          const stdDev = Math.sqrt(closes.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / closes.length);
-          state.market[symbol].zScore = (state.market[symbol].current - mean) / stdDev;
-
-          // Simple RSI calculation
-          let ups = 0, downs = 0;
-          for (let i = 1; i < closes.length; i++) {
-            const diff = closes[i] - closes[i - 1];
-            diff > 0 ? ups += diff : downs -= diff;
-          }
-          const rs = ups / (downs || 1);
-          state.market[symbol].rsi = 100 - (100 / (1 + rs));
-        });
-
-        await Promise.all(updates);
-        document.getElementById('status').innerText = "BINANCE LIVE";
-        document.getElementById('statusDot').style.background = "var(--neon-green)";
-        document.getElementById('lastUpdate').innerText = new Date().toLocaleTimeString();
-      } catch (e) {
-        console.error("API Error", e);
-        document.getElementById('status').innerText = "API ERROR";
+    function loadState() {
+      try {
+        const hash = window.location.hash.slice(1);
+        if (!hash) return null;
+        const data = JSON.parse(atob(hash));
+        return {
+          balance: data.b,
+          startBalance: data.sb,
+          positions: data.p.map(p => ({
+            id: p.id, symbol: p.s, type: p.t, entry: p.e, qty: p.q, size: p.sz, tp: p.tp, sl: p.sl
+          })),
+          trades: data.tr.map(t => ({
+            symbol: t.s, type: t.t, pnl: t.pnl, reason: t.r, time: Date.now()
+          })),
+          signals: [],
+          equity: [{t:Date.now(), v:data.b}],
+          startTime: data.st || Date.now()
+        };
+      } catch(e) {
+        return null;
       }
     }
 
-    function logic() {
-      if (!state.isRunning) return;
+    function resetBot() {
+      if (!window.confirm) {
+        // Custom confirm for iframe
+        S = {
+          balance: CFG.balance,
+          startBalance: CFG.balance,
+          positions: [],
+          trades: [],
+          signals: [],
+          equity: [{t:Date.now(),v:CFG.balance}],
+          startTime: Date.now()
+        };
+        history.replaceState(null, '', window.location.pathname);
+        updateUI();
+        return;
+      }
+      S = {
+        balance: CFG.balance,
+        startBalance: CFG.balance,
+        positions: [],
+        trades: [],
+        signals: [],
+        equity: [{t:Date.now(),v:CFG.balance}],
+        startTime: Date.now()
+      };
+      history.replaceState(null, '', window.location.pathname);
+      updateUI();
+    }
 
-      CONFIG.symbols.forEach(symbol => {
-        const data = state.market[symbol];
-        const hasPos = state.positions.find(p => p.symbol === symbol);
+    // ===== DOM =====
+    const el = {
+      status: document.getElementById('status'),
+      balance: document.getElementById('balance'),
+      pnl: document.getElementById('pnl'),
+      positions: document.getElementById('positions'),
+      trades: document.getElementById('trades'),
+      winrate: document.getElementById('winrate'),
+      uptime: document.getElementById('uptime'),
+      lastUpdate: document.getElementById('lastUpdate'),
+      marketTable: document.getElementById('marketTable'),
+      positionsList: document.getElementById('positionsList'),
+      signalsList: document.getElementById('signalsList'),
+      history: document.getElementById('history')
+    };
 
-        if (!hasPos && state.positions.length < 5) {
-          // Entry Logic: Reversion
-          if (data.zScore < -CONFIG.zThreshold && data.rsi < CONFIG.rsiLow) {
-            openPosition(symbol, 'LONG', data.current);
-          } else if (data.zScore > CONFIG.zThreshold && data.rsi > CONFIG.rsiHigh) {
-            openPosition(symbol, 'SHORT', data.current);
+    // ===== CHART =====
+    const chart = new Chart(document.getElementById('chart').getContext('2d'), {
+      type: 'line',
+      data: { labels: [], datasets: [{ data: [], borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#555', font: { size: 9 }, callback: v => '$' + v.toFixed(0) } } }, animation: false }
+    });
+
+    // ===== BINANCE DATA =====
+    async function fetchData() {
+      try {
+        // Ticker data
+        const tickerRes = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+        if (!tickerRes.ok) throw new Error('API Error');
+        const tickers = await tickerRes.json();
+
+        // Klines for VWAP calculation
+        const klinePromises = CFG.symbols.map(async sym => {
+          try {
+            const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1m&limit=20`);
+            return { sym, data: await res.json() };
+          } catch { return null; }
+        });
+
+        // Order book for OBI
+        const depthPromises = CFG.symbols.map(async sym => {
+          try {
+            const res = await fetch(`https://api.binance.com/api/v3/depth?symbol=${sym}&limit=10`);
+            return { sym, data: await res.json() };
+          } catch { return null; }
+        });
+
+        const [klines, depths] = await Promise.all([
+          Promise.all(klinePromises),
+          Promise.all(depthPromises)
+        ]);
+
+        CFG.symbols.forEach(sym => {
+          const ticker = tickers.find(t => t.symbol === sym);
+          if (ticker) {
+            market[sym] = {
+              price: parseFloat(ticker.lastPrice),
+              change: parseFloat(ticker.priceChangePercent),
+              high: parseFloat(ticker.highPrice),
+              low: parseFloat(ticker.lowPrice),
+              vol: parseFloat(ticker.quoteVolume)
+            };
           }
+        });
+
+        // Calculate OBI
+        depths.forEach(d => {
+          if (d && d.data && d.data.bids && d.data.asks) {
+            const bidVol = d.data.bids.reduce((s, [_, q]) => s + parseFloat(q), 0);
+            const askVol = d.data.asks.reduce((s, [_, q]) => s + parseFloat(q), 0);
+            const total = bidVol + askVol;
+            indicators[d.sym] = indicators[d.sym] || {};
+            indicators[d.sym].obi = total > 0 ? (bidVol - askVol) / total : 0;
+          }
+        });
+
+        // Calculate VWAP
+        klines.forEach(k => {
+          if (k && k.data && k.data.length >= 5) {
+            let cumTPV = 0, cumVol = 0;
+            k.data.forEach(c => {
+              const tp = (parseFloat(c[2]) + parseFloat(c[3]) + parseFloat(c[4])) / 3;
+              const vol = parseFloat(c[5]);
+              cumTPV += tp * vol;
+              cumVol += vol;
+            });
+            const vwap = cumVol > 0 ? cumTPV / cumVol : market[k.sym]?.price || 0;
+            indicators[k.sym] = indicators[k.sym] || {};
+            indicators[k.sym].vwap = vwap;
+            if (market[k.sym]) {
+              indicators[k.sym].vwapDiff = (market[k.sym].price - vwap) / vwap;
+            }
+          }
+        });
+
+        el.status.textContent = 'LIVE';
+        el.status.className = 'text-xs text-green-400';
+        el.lastUpdate.textContent = new Date().toLocaleTimeString();
+        return true;
+      } catch (err) {
+        console.error('Fetch error:', err);
+        el.status.textContent = 'RETRY...';
+        el.status.className = 'text-xs text-yellow-400';
+        return false;
+      }
+    }
+
+    // ===== TRADING LOGIC =====
+    function trade() {
+      CFG.symbols.forEach(sym => {
+        const m = market[sym];
+        const ind = indicators[sym];
+        if (!m || !ind) return;
+
+        const hasPos = S.positions.find(p => p.symbol === sym);
+        if (hasPos || S.positions.length >= CFG.maxPositions) return;
+
+        const obi = ind.obi || 0;
+        const vwapDiff = ind.vwapDiff || 0;
+
+        let signal = null;
+
+        // LONG: OBI positive (buyers) + price below VWAP
+        if (obi > CFG.obiThreshold && vwapDiff < -CFG.vwapDeviation) {
+          signal = { type: 'LONG', sym, price: m.price, obi, vwapDiff };
+        }
+        // SHORT: OBI negative (sellers) + price above VWAP
+        else if (obi < -CFG.obiThreshold && vwapDiff > CFG.vwapDeviation) {
+          signal = { type: 'SHORT', sym, price: m.price, obi, vwapDiff };
+        }
+
+        if (signal) openPosition(signal);
+      });
+
+      checkPositions();
+    }
+
+    function openPosition(sig) {
+      const size = S.balance * CFG.positionSize;
+      if (size < 0.5) return;
+
+      const qty = size / sig.price;
+      const isLong = sig.type === 'LONG';
+
+      S.positions.push({
+        id: Date.now(),
+        symbol: sig.sym,
+        type: sig.type,
+        entry: sig.price,
+        qty,
+        size,
+        tp: isLong ? sig.price * (1 + CFG.takeProfit) : sig.price * (1 - CFG.takeProfit),
+        sl: isLong ? sig.price * (1 - CFG.stopLoss) : sig.price * (1 + CFG.stopLoss)
+      });
+
+      S.balance -= size;
+
+      S.signals.unshift({ type: sig.type, symbol: sig.sym, price: sig.price, action: 'OPEN', time: Date.now() });
+      if (S.signals.length > 15) S.signals.pop();
+
+      saveState();
+    }
+
+    function checkPositions() {
+      const closed = [];
+
+      S.positions.forEach(pos => {
+        const m = market[pos.symbol];
+        if (!m) return;
+
+        const price = m.price;
+        const isLong = pos.type === 'LONG';
+        let close = false, reason = '';
+
+        if (isLong) {
+          if (price >= pos.tp) { close = true; reason = 'TP'; }
+          else if (price <= pos.sl) { close = true; reason = 'SL'; }
+        } else {
+          if (price <= pos.tp) { close = true; reason = 'TP'; }
+          else if (price >= pos.sl) { close = true; reason = 'SL'; }
+        }
+
+        if (close) {
+          const pnl = isLong ? (price - pos.entry) * pos.qty : (pos.entry - price) * pos.qty;
+          S.balance += pos.size + pnl;
+
+          S.trades.push({ symbol: pos.symbol, type: pos.type, entry: pos.entry, exit: price, pnl, pnlPct: (pnl/pos.size)*100, reason, time: Date.now() });
+
+          S.signals.unshift({ type: 'CLOSE', symbol: pos.symbol, price, pnl, reason, time: Date.now() });
+          if (S.signals.length > 15) S.signals.pop();
+
+          closed.push(pos.id);
         }
       });
 
-      // Exit Logic
-      state.positions.forEach((pos, idx) => {
-        const currentPrice = state.market[pos.symbol].current;
-        const pnlPct = pos.type === 'LONG' 
-          ? (currentPrice - pos.entry) / pos.entry 
-          : (pos.entry - currentPrice) / pos.entry;
-
-        if (pnlPct >= CONFIG.tp || pnlPct <= -CONFIG.sl) {
-          closePosition(idx, currentPrice, pnlPct);
-        }
-      });
-
-      render();
+      if (closed.length > 0) {
+        S.positions = S.positions.filter(p => !closed.includes(p.id));
+        saveState();
+      }
     }
 
-    function openPosition(symbol, type, price) {
-      state.positions.push({ symbol, type, entry: price, time: Date.now() });
-    }
+    // ===== UI =====
+    function updateUI() {
+      // Calculate values
+      const posValue = S.positions.reduce((sum, p) => {
+        const m = market[p.symbol];
+        return sum + (m ? p.qty * m.price : p.size);
+      }, 0);
+      const total = S.balance + posValue;
+      const pnl = total - S.startBalance;
+      const pnlPct = (pnl / S.startBalance) * 100;
+      const wins = S.trades.filter(t => t.pnl > 0).length;
+      const wr = S.trades.length > 0 ? Math.round(wins / S.trades.length * 100) : 0;
 
-    function closePosition(index, price, pnlPct) {
-      const pos = state.positions[index];
-      const profit = CONFIG.riskPerTrade * pnlPct;
-      state.realizedPnL += profit;
-      state.history.push({ ...pos, exit: price, pnl: profit });
-      state.positions.splice(index, 1);
-    }
+      // Uptime
+      const upSec = Math.floor((Date.now() - S.startTime) / 1000);
+      const upMin = Math.floor(upSec / 60);
+      const upHr = Math.floor(upMin / 60);
+      const upStr = upHr > 0 ? `${upHr}h ${upMin%60}m` : `${upMin}:${String(upSec%60).padStart(2,'0')}`;
 
-    function toggleBot() {
-      state.isRunning = !state.isRunning;
-      const btn = document.getElementById('botToggle');
-      btn.innerText = state.isRunning ? "STOP BOT" : "START BOT";
-      btn.className = state.isRunning ? "bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg" : "bg-green-500 hover:bg-green-600 text-black font-bold py-2 px-6 rounded-lg";
-    }
-
-    function render() {
       // Stats
-      document.getElementById('balance').innerText = `$${(state.balance + state.realizedPnL).toFixed(2)}`;
-      document.getElementById('openPositions').innerText = state.positions.length;
-      document.getElementById('pnl').innerText = `${state.realizedPnL >= 0 ? '+' : ''}$${state.realizedPnL.toFixed(2)}`;
-      document.getElementById('pnl').className = `text-xl font-bold ${state.realizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}`;
+      el.balance.textContent = '$' + total.toFixed(2);
+      el.balance.className = 'text-sm font-bold ' + (pnl >= 0 ? 'profit' : 'loss');
+      el.pnl.textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2);
+      el.pnl.className = 'text-sm font-bold ' + (pnl >= 0 ? 'profit' : 'loss');
+      el.positions.textContent = S.positions.length;
+      el.trades.textContent = S.trades.length;
+      el.winrate.textContent = wr + '%';
+      el.uptime.textContent = upStr;
 
-      // Table
-      let html = '';
-      CONFIG.symbols.forEach(s => {
-        const m = state.market[s];
-        const zLeft = Math.min(Math.max(50 + (m.zScore * 20), 5), 95);
-        html += `<tr>
-          <td class="py-2 font-bold">${s.replace('USDT','')}</td>
-          <td>$${m.current.toLocaleString()}</td>
-          <td class="pr-4"><div class="z-score-indicator"><div class="z-marker" style="left:${zLeft}%"></div></div></td>
-          <td class="${m.rsi < 35 ? 'text-green-400' : m.rsi > 65 ? 'text-red-400' : ''}">${m.rsi.toFixed(0)}</td>
-          <td class="text-right">${m.zScore < -2 ? '🔥 BUY' : m.zScore > 2 ? '❄️ SELL' : 'WAIT'}</td>
-        </tr>`;
+      // Market table
+      let rows = '';
+      CFG.symbols.forEach(sym => {
+        const m = market[sym];
+        const ind = indicators[sym] || {};
+        if (!m) return;
+
+        const obi = ind.obi || 0;
+        const vwapDiff = (ind.vwapDiff || 0) * 100;
+        const hasPos = S.positions.find(p => p.symbol === sym);
+        const obiPos = 50 + obi * 50;
+
+        let sig = '';
+        if (obi > CFG.obiThreshold && vwapDiff < -CFG.vwapDeviation * 100) {
+          sig = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-500/30 text-green-400">LONG</span>';
+        } else if (obi < -CFG.obiThreshold && vwapDiff > CFG.vwapDeviation * 100) {
+          sig = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/30 text-red-400">SHORT</span>';
+        }
+
+        rows += `
+          <tr class="border-b border-gray-800/30 hover:bg-white/5">
+            <td class="py-1 px-1">
+              <span class="font-bold">${sym.replace('USDT','')}</span>
+              ${hasPos ? '<span class="ml-1 text-blue-400">●</span>' : ''}
+            </td>
+            <td class="text-right px-1 ${m.change >= 0 ? 'profit' : 'loss'}">$${m.price > 100 ? m.price.toFixed(1) : m.price.toFixed(4)}</td>
+            <td class="px-1">
+              <div class="relative w-12 h-2 mx-auto">
+                <div class="obi-bar absolute inset-0"></div>
+                <div class="obi-marker absolute top-[-3px]" style="left:${obiPos}%;transform:translateX(-50%)"></div>
+              </div>
+            </td>
+            <td class="text-center px-1 ${vwapDiff > 0 ? 'loss' : 'profit'}">${vwapDiff > 0 ? '+' : ''}${vwapDiff.toFixed(2)}%</td>
+            <td class="text-center px-1">${sig || '<span class="text-gray-700">—</span>'}</td>
+          </tr>
+        `;
       });
-      document.getElementById('marketTable').innerHTML = html;
+      el.marketTable.innerHTML = rows || '<tr><td colspan="5" class="text-center py-4 text-gray-600">Loading...</td></tr>';
 
       // Positions
-      document.getElementById('positionsList').innerHTML = state.positions.map(p => `
-        <div class="p-2 rounded text-[10px] ${p.type === 'LONG' ? 'signal-long' : 'signal-short'} flex justify-between">
-          <span>${p.symbol} (${p.type})</span>
-          <span>Entry: $${p.entry}</span>
-        </div>
-      `).join('') || '<p class="text-center text-gray-600 text-xs py-4">Scanning for entries...</p>';
+      if (S.positions.length === 0) {
+        el.positionsList.innerHTML = '<p class="text-gray-600 text-center py-2">No positions</p>';
+      } else {
+        el.positionsList.innerHTML = S.positions.map(p => {
+          const m = market[p.symbol];
+          const curr = m ? m.price : p.entry;
+          const pnl = p.type === 'LONG' ? (curr - p.entry) * p.qty : (p.entry - curr) * p.qty;
+          const pnlPct = (pnl / p.size) * 100;
+          return `
+            <div class="p-1.5 rounded ${pnl >= 0 ? 'long-bg' : 'short-bg'}">
+              <div class="flex justify-between">
+                <span class="font-bold">${p.symbol.replace('USDT','')} <span class="${p.type==='LONG'?'profit':'loss'}">${p.type}</span></span>
+                <span class="${pnl >= 0 ? 'profit' : 'loss'}">${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Signals
+      if (S.signals.length === 0) {
+        el.signalsList.innerHTML = '<p class="text-gray-600 text-center py-2">Waiting...</p>';
+      } else {
+        el.signalsList.innerHTML = S.signals.slice(0, 5).map(s => {
+          const isLong = s.type === 'LONG';
+          const isClose = s.type === 'CLOSE';
+          return `
+            <div class="p-1 rounded ${isClose ? (s.pnl >= 0 ? 'long-bg' : 'short-bg') : (isLong ? 'long-bg' : 'short-bg')}">
+              <div class="flex justify-between">
+                <span class="font-bold">${s.symbol.replace('USDT','')} ${s.type}</span>
+                ${s.pnl !== undefined ? `<span class="${s.pnl >= 0 ? 'profit' : 'loss'}">${s.pnl >= 0 ? '+' : ''}$${s.pnl.toFixed(2)}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
 
       // History
-      document.getElementById('tradeHistory').innerHTML = state.history.slice(-5).reverse().map(h => `
-        <div class="flex justify-between border-b border-gray-800 pb-1">
-          <span>${h.symbol}</span>
-          <span class="${h.pnl >= 0 ? 'text-green-400' : 'text-red-400'}">${h.pnl >= 0 ? '+' : ''}$${h.pnl.toFixed(2)}</span>
-        </div>
-      `).join('');
+      if (S.trades.length === 0) {
+        el.history.innerHTML = '<p class="text-gray-600 text-center py-3">No trades</p>';
+      } else {
+        el.history.innerHTML = S.trades.slice(-15).reverse().map(t => `
+          <div class="flex justify-between p-1 rounded bg-black/30">
+            <span>${t.symbol.replace('USDT','')} ${t.type}</span>
+            <span class="${t.pnl >= 0 ? 'profit' : 'loss'}">${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)} ${t.reason}</span>
+          </div>
+        `).join('');
+      }
 
       // Chart
-      state.equityData.push(state.balance + state.realizedPnL);
-      if(state.equityData.length > 50) state.equityData.shift();
-      chart.data.labels = state.equityData.map((_,i) => i);
-      chart.data.datasets[0].data = state.equityData;
+      S.equity.push({ t: Date.now(), v: total });
+      if (S.equity.length > 100) S.equity.shift();
+
+      chart.data.labels = S.equity.map(() => '');
+      chart.data.datasets[0].data = S.equity.map(e => e.v);
+      chart.data.datasets[0].borderColor = pnl >= 0 ? '#00ff88' : '#ff3366';
+      chart.data.datasets[0].backgroundColor = pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,51,102,0.1)';
       chart.update('none');
     }
 
-    // Main Loops
-    setInterval(updateMarketData, 3000); // Fetch Binance data every 3s
-    setInterval(logic, 1000); // Run trade logic every 1s
-    updateMarketData(); 
+    // ===== MAIN LOOP =====
+    async function loop() {
+      const ok = await fetchData();
+      if (ok) {
+        trade();
+        updateUI();
+      }
+    }
+
+    // ===== AUTO START =====
+    (async function init() {
+      console.log('🚀 Auto Trader Starting...');
+      console.log('📊 Loaded state:', S.balance, 'trades:', S.trades.length);
+
+      await fetchData();
+      updateUI();
+
+      // Fast loop - AUTO running
+      setInterval(loop, CFG.updateMs);
+
+      // Save state periodically
+      setInterval(saveState, 5000);
+    })();
   </script>
 </body>
 </html>
+
 
