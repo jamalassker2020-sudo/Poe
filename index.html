@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aggressive Crypto Bot - OBI & VWAP</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-green: #00ff88;
+      --neon-red: #ff3366;
+      --neon-blue: #00d4ff;
+      --bg-dark: #0a0a0f;
+      --bg-card: #12121a;
+    }
+    * { font-family: 'Space Grotesk', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    body { background: var(--bg-dark); }
+
+    .glow-green { text-shadow: 0 0 20px var(--neon-green); }
+    .glow-red { text-shadow: 0 0 20px var(--neon-red); }
+
+    .card {
+      background: linear-gradient(135deg, var(--bg-card) 0%, #15151f 100%);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+    }
+
+    .pulse-dot { animation: pulse 1s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in { animation: slideIn 0.4s ease-out forwards; }
+
+    @keyframes flash {
+      0%, 100% { background: transparent; }
+      50% { background: rgba(0,255,136,0.3); }
+    }
+    .flash-green { animation: flash 0.5s ease; }
+    .flash-red { animation: flash 0.5s ease; background: rgba(255,51,102,0.3); }
+
+    .signal-buy {
+      background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,255,136,0.05));
+      border-left: 3px solid var(--neon-green);
+    }
+    .signal-sell {
+      background: linear-gradient(135deg, rgba(255,51,102,0.2), rgba(255,51,102,0.05));
+      border-left: 3px solid var(--neon-red);
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+    .obi-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--neon-red), #333 50%, var(--neon-green));
+    }
+    .obi-indicator {
+      width: 4px;
+      height: 16px;
+      background: white;
+      border-radius: 2px;
+      transition: left 0.2s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-white p-3 md:p-6">
+  <!-- Header -->
+  <header class="mb-4 animate-in">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center">
+          <span class="text-xl">⚡</span>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold">Aggressive Crypto Bot</h1>
+          <p class="text-gray-400 text-xs">OBI + VWAP • Ultra Fast Mode</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <span class="pulse-dot w-3 h-3 rounded-full" id="statusDot"></span>
+          <span class="text-sm" id="status">Initializing...</span>
+        </div>
+        <button onclick="toggleBot()" id="botToggle" class="px-4 py-2 rounded-lg font-semibold transition-all bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30 text-sm">
+          Start Bot
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats Row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    <div class="card p-3 animate-in" style="animation-delay: 0.05s">
+      <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Balance</p>
+      <p class="text-xl font-bold mono" id="balance">$100.00</p>
+      <p class="text-xs mt-1" id="balanceChange">+$0.00 (0.00%)</p>
+    </div>
+    <div class="card p-3 animate-in" style="animation-delay: 0.1s">
+      <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Open Positions</p>
+      <p class="text-xl font-bold mono text-blue-400" id="openPositions">0</p>
+      <p class="text-xs text-gray-500 mt-1" id="positionValue">$0.00 allocated</p>
+    </div>
+    <div class="card p-3 animate-in" style="animation-delay: 0.15s">
+      <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">Total Trades</p>
+      <p class="text-xl font-bold mono text-purple-400" id="totalTrades">0</p>
+      <p class="text-xs text-gray-500 mt-1" id="winRate">0% win rate</p>
+    </div>
+    <div class="card p-3 animate-in" style="animation-delay: 0.2s">
+      <p class="text-gray-400 text-xs uppercase tracking-wider mb-1">P&L Today</p>
+      <p class="text-xl font-bold mono" id="pnlToday">$0.00</p>
+      <p class="text-xs mt-1" id="pnlPercent">0.00%</p>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Market Scanner -->
+    <div class="lg:col-span-2 card p-3 animate-in" style="animation-delay: 0.25s">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">📊 Market Scanner (20 Symbols)</h2>
+        <div class="flex gap-2 text-xs">
+          <span class="px-2 py-1 rounded bg-green-500/20 text-green-400">OBI</span>
+          <span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400">VWAP</span>
+        </div>
+      </div>
+      <div class="overflow-x-auto max-h-80 overflow-y-auto">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-[#12121a] z-10">
+            <tr class="text-gray-400 text-xs uppercase border-b border-gray-800">
+              <th class="text-left py-2 px-2">Symbol</th>
+              <th class="text-right px-2">Price</th>
+              <th class="text-right px-2">Chg%</th>
+              <th class="text-center px-2">OBI</th>
+              <th class="text-center px-2">VWAP</th>
+              <th class="text-center px-2">Signal</th>
+            </tr>
+          </thead>
+          <tbody id="marketTable">
+            <tr><td colspan="6" class="text-center py-6 text-gray-500">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="space-y-4">
+      <!-- Active Positions -->
+      <div class="card p-3 animate-in" style="animation-delay: 0.3s">
+        <h2 class="font-semibold mb-3">📈 Active Positions</h2>
+        <div id="positionsList" class="space-y-2 max-h-40 overflow-y-auto">
+          <p class="text-gray-500 text-sm text-center py-3">No open positions</p>
+        </div>
+      </div>
+
+      <!-- Recent Signals -->
+      <div class="card p-3 animate-in" style="animation-delay: 0.35s">
+        <h2 class="font-semibold mb-3">🚀 Live Signals</h2>
+        <div id="signalsList" class="space-y-2 max-h-40 overflow-y-auto">
+          <p class="text-gray-500 text-sm text-center py-3">Waiting...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Row -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <div class="card p-3 animate-in" style="animation-delay: 0.4s">
+      <h2 class="font-semibold mb-3">💰 Portfolio</h2>
+      <canvas id="portfolioChart" height="150"></canvas>
+    </div>
+    <div class="card p-3 animate-in" style="animation-delay: 0.45s">
+      <h2 class="font-semibold mb-3">📜 Trade History</h2>
+      <div id="tradeHistory" class="space-y-2 max-h-44 overflow-y-auto">
+        <p class="text-gray-500 text-sm text-center py-6">No trades yet</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="card p-3 mt-4 animate-in" style="animation-delay: 0.5s">
+    <h2 class="font-semibold mb-2">⚙️ Ultra Aggressive Settings</h2>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+      <div class="bg-black/30 rounded-lg p-2">
+        <p class="text-gray-400 text-xs">OBI Trigger</p>
+        <p class="font-semibold text-green-400">±8%</p>
+      </div>
+      <div class="bg-black/30 rounded-lg p-2">
+        <p class="text-gray-400 text-xs">VWAP Dev</p>
+        <p class="font-semibold text-blue-400">±0.15%</p>
+      </div>
+      <div class="bg-black/30 rounded-lg p-2">
+        <p class="text-gray-400 text-xs">Take Profit</p>
+        <p class="font-semibold text-green-400">+0.5%</p>
+      </div>
+      <div class="bg-black/30 rounded-lg p-2">
+        <p class="text-gray-400 text-xs">Stop Loss</p>
+        <p class="font-semibold text-red-400">-0.3%</p>
+      </div>
+      <div class="bg-black/30 rounded-lg p-2">
+        <p class="text-gray-400 text-xs">Update Speed</p>
+        <p class="font-semibold text-yellow-400">1s</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== CONFIGURATION - ULTRA AGGRESSIVE =====
+    const CONFIG = {
+      initialBalance: 100,
+      symbols: [
+        'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'XRPUSDT', 'ADAUSDT',
+        'DOGEUSDT', 'SOLUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT',
+        'SHIBUSDT', 'AVAXUSDT', 'LINKUSDT', 'ATOMUSDT', 'UNIUSDT',
+        'ETCUSDT', 'XLMUSDT', 'NEARUSDT', 'APTUSDT', 'ARBUSDT'
+      ],
+      // ULTRA AGGRESSIVE - very weak thresholds for fast trading
+      obiThreshold: 0.08,       // 8% OBI triggers (very low)
+      vwapDeviation: 0.0015,    // 0.15% from VWAP triggers
+      takeProfit: 0.005,        // 0.5% TP (fast close)
+      stopLoss: 0.003,          // 0.3% SL (tight)
+      maxPositionSize: 0.12,    // 12% per trade
+      maxOpenPositions: 6,
+      updateInterval: 1000      // 1 second (ultra fast)
+    };
+
+    // ===== STATE =====
+    let state = {
+      balance: CONFIG.initialBalance,
+      startingBalance: CONFIG.initialBalance,
+      positions: [],
+      trades: [],
+      signals: [],
+      marketData: {},
+      obiData: {},
+      vwapData: {},
+      isRunning: false,
+      portfolioHistory: [{ time: Date.now(), value: CONFIG.initialBalance }],
+      lastPrices: {},
+      connected: false
+    };
+
+    // ===== DOM =====
+    const el = {
+      balance: document.getElementById('balance'),
+      balanceChange: document.getElementById('balanceChange'),
+      openPositions: document.getElementById('openPositions'),
+      positionValue: document.getElementById('positionValue'),
+      totalTrades: document.getElementById('totalTrades'),
+      winRate: document.getElementById('winRate'),
+      pnlToday: document.getElementById('pnlToday'),
+      pnlPercent: document.getElementById('pnlPercent'),
+      marketTable: document.getElementById('marketTable'),
+      positionsList: document.getElementById('positionsList'),
+      signalsList: document.getElementById('signalsList'),
+      tradeHistory: document.getElementById('tradeHistory'),
+      status: document.getElementById('status'),
+      statusDot: document.getElementById('statusDot'),
+      botToggle: document.getElementById('botToggle')
+    };
+
+    // ===== CHART =====
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          data: [],
+          borderColor: '#00ff88',
+          backgroundColor: 'rgba(0,255,136,0.1)',
+          fill: true,
+          tension: 0.4,
+          borderWidth: 2,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#888', callback: v => '$' + v.toFixed(2) }
+          }
+        },
+        animation: { duration: 0 }
+      }
+    });
+
+    // ===== BINANCE WEBSOCKET (FAST REAL-TIME DATA) =====
+    let ws = null;
+    let wsReconnectTimer = null;
+
+    function connectWebSocket() {
+      const streams = CONFIG.symbols.map(s => `${s.toLowerCase()}@ticker`).join('/');
+      const wsUrl = `wss://stream.binance.com:9443/stream?streams=${streams}`;
+
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          state.connected = true;
+          el.status.textContent = 'LIVE';
+          el.status.className = 'text-sm text-green-400';
+          el.statusDot.className = 'pulse-dot w-3 h-3 rounded-full bg-green-500';
+          console.log('WebSocket connected');
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.data) {
+              const d = msg.data;
+              const symbol = d.s;
+              state.lastPrices[symbol] = state.marketData[symbol]?.price || parseFloat(d.c);
+              state.marketData[symbol] = {
+                price: parseFloat(d.c),
+                change24h: parseFloat(d.P),
+                high: parseFloat(d.h),
+                low: parseFloat(d.l),
+                volume: parseFloat(d.v),
+                quoteVolume: parseFloat(d.q)
+              };
+              // Generate synthetic OBI and VWAP for speed
+              generateIndicators(symbol);
+            }
+          } catch (e) {}
+        };
+
+        ws.onerror = () => {
+          console.log('WebSocket error, using REST fallback');
+          state.connected = false;
+          fallbackToREST();
+        };
+
+        ws.onclose = () => {
+          state.connected = false;
+          el.status.textContent = 'Reconnecting...';
+          el.status.className = 'text-sm text-yellow-400';
+          el.statusDot.className = 'pulse-dot w-3 h-3 rounded-full bg-yellow-500';
+          wsReconnectTimer = setTimeout(connectWebSocket, 3000);
+        };
+      } catch (e) {
+        fallbackToREST();
+      }
+    }
+
+    // ===== REST API FALLBACK =====
+    async function fallbackToREST() {
+      el.status.textContent = 'REST Mode';
+      el.status.className = 'text-sm text-blue-400';
+      el.statusDot.className = 'pulse-dot w-3 h-3 rounded-full bg-blue-500';
+
+      async function fetchData() {
+        try {
+          // Use allorigins proxy to avoid CORS
+          const proxyUrl = 'https://api.allorigins.win/raw?url=';
+          const apiUrl = encodeURIComponent('https://api.binance.com/api/v3/ticker/24hr');
+          const res = await fetch(proxyUrl + apiUrl);
+          const data = await res.json();
+
+          CONFIG.symbols.forEach(symbol => {
+            const t = data.find(x => x.symbol === symbol);
+            if (t) {
+              state.lastPrices[symbol] = state.marketData[symbol]?.price || parseFloat(t.lastPrice);
+              state.marketData[symbol] = {
+                price: parseFloat(t.lastPrice),
+                change24h: parseFloat(t.priceChangePercent),
+                high: parseFloat(t.highPrice),
+                low: parseFloat(t.lowPrice),
+                volume: parseFloat(t.volume),
+                quoteVolume: parseFloat(t.quoteVolume)
+              };
+              generateIndicators(symbol);
+            }
+          });
+          state.connected = true;
+        } catch (e) {
+          console.log('REST failed, using simulation');
+          simulateData();
+        }
+      }
+
+      await fetchData();
+      setInterval(fetchData, 2000);
+    }
+
+    // ===== SIMULATION FALLBACK =====
+    function simulateData() {
+      el.status.textContent = 'SIMULATION';
+      el.status.className = 'text-sm text-orange-400';
+      el.statusDot.className = 'pulse-dot w-3 h-3 rounded-full bg-orange-500';
+
+      const basePrices = {
+        'BTCUSDT': 67500, 'ETHUSDT': 3450, 'BNBUSDT': 580, 'XRPUSDT': 0.52,
+        'ADAUSDT': 0.45, 'DOGEUSDT': 0.12, 'SOLUSDT': 145, 'DOTUSDT': 7.2,
+        'MATICUSDT': 0.58, 'LTCUSDT': 85, 'SHIBUSDT': 0.000025, 'AVAXUSDT': 35,
+        'LINKUSDT': 14.5, 'ATOMUSDT': 8.8, 'UNIUSDT': 7.5, 'ETCUSDT': 27,
+        'XLMUSDT': 0.11, 'NEARUSDT': 5.2, 'APTUSDT': 9.5, 'ARBUSDT': 0.85
+      };
+
+      CONFIG.symbols.forEach(s => {
+        if (!state.marketData[s]) {
+          state.marketData[s] = {
+            price: basePrices[s] || 10,
+            change24h: (Math.random() - 0.5) * 10,
+            high: basePrices[s] * 1.05,
+            low: basePrices[s] * 0.95,
+            volume: Math.random() * 1000000,
+            quoteVolume: Math.random() * 50000000
+          };
+        }
+      });
+
+      setInterval(() => {
+        CONFIG.symbols.forEach(s => {
+          const m = state.marketData[s];
+          if (m) {
+            state.lastPrices[s] = m.price;
+            // Random walk with momentum
+            const volatility = 0.002 + Math.random() * 0.003;
+            const direction = Math.random() > 0.48 ? 1 : -1;
+            m.price *= (1 + direction * volatility);
+            m.change24h += (Math.random() - 0.5) * 0.5;
+            generateIndicators(s);
+          }
+        });
+      }, 500);
+
+      state.connected = true;
+    }
+
+    // ===== GENERATE OBI & VWAP INDICATORS =====
+    function generateIndicators(symbol) {
+      const m = state.marketData[symbol];
+      if (!m) return;
+
+      // Synthetic OBI based on price momentum and volume
+      const priceChange = state.lastPrices[symbol] ? (m.price - state.lastPrices[symbol]) / state.lastPrices[symbol] : 0;
+      const momentum = priceChange * 100;
+      const noise = (Math.random() - 0.5) * 0.15;
+      state.obiData[symbol] = Math.max(-1, Math.min(1, momentum * 5 + noise));
+
+      // VWAP approximation
+      const typicalPrice = (m.high + m.low + m.price) / 3;
+      const vwapBase = typicalPrice * (0.998 + Math.random() * 0.004);
+      state.vwapData[symbol] = vwapBase;
+    }
+
+    // ===== TRADING LOGIC =====
+    function analyzeAndTrade() {
+      if (!state.isRunning || !state.connected) return;
+
+      CONFIG.symbols.forEach(symbol => {
+        const m = state.marketData[symbol];
+        const obi = state.obiData[symbol];
+        const vwap = state.vwapData[symbol];
+
+        if (!m || obi === undefined || !vwap) return;
+
+        const price = m.price;
+        const vwapDiff = (price - vwap) / vwap;
+        const hasPosition = state.positions.find(p => p.symbol === symbol);
+
+        // Skip if already have position
+        if (hasPosition) return;
+        if (state.positions.length >= CONFIG.maxOpenPositions) return;
+
+        let signal = null;
+
+        // AGGRESSIVE BUY: OBI positive (buyers) + price below VWAP
+        if (obi > CONFIG.obiThreshold && vwapDiff < -CONFIG.vwapDeviation) {
+          signal = { type: 'BUY', symbol, price, obi, vwap, vwapDiff, strength: Math.abs(obi * 100) };
+        }
+        // AGGRESSIVE SELL: OBI negative (sellers) + price above VWAP
+        else if (obi < -CONFIG.obiThreshold && vwapDiff > CONFIG.vwapDeviation) {
+          signal = { type: 'SELL', symbol, price, obi, vwap, vwapDiff, strength: Math.abs(obi * 100) };
+        }
+
+        if (signal) {
+          executeTrade(signal);
+        }
+      });
+
+      checkPositions();
+    }
+
+    function executeTrade(signal) {
+      const positionSize = state.balance * CONFIG.maxPositionSize;
+      if (positionSize < 0.5) return;
+
+      const quantity = positionSize / signal.price;
+
+      const position = {
+        id: Date.now() + Math.random(),
+        symbol: signal.symbol,
+        type: signal.type,
+        entryPrice: signal.price,
+        quantity,
+        size: positionSize,
+        entryTime: Date.now(),
+        takeProfit: signal.type === 'BUY'
+          ? signal.price * (1 + CONFIG.takeProfit)
+          : signal.price * (1 - CONFIG.takeProfit),
+        stopLoss: signal.type === 'BUY'
+          ? signal.price * (1 - CONFIG.stopLoss)
+          : signal.price * (1 + CONFIG.stopLoss)
+      };
+
+      state.positions.push(position);
+      state.balance -= positionSize;
+
+      addSignal({
+        type: signal.type,
+        symbol: signal.symbol,
+        price: signal.price,
+        action: 'OPEN',
+        size: positionSize,
+        time: Date.now()
+      });
+    }
+
+    function checkPositions() {
+      const toClose = [];
+
+      state.positions.forEach(pos => {
+        const m = state.marketData[pos.symbol];
+        if (!m) return;
+
+        const price = m.price;
+        let close = false;
+        let reason = '';
+
+        if (pos.type === 'BUY') {
+          if (price >= pos.takeProfit) { close = true; reason = 'TP'; }
+          else if (price <= pos.stopLoss) { close = true; reason = 'SL'; }
+        } else {
+          if (price <= pos.takeProfit) { close = true; reason = 'TP'; }
+          else if (price >= pos.stopLoss) { close = true; reason = 'SL'; }
+        }
+
+        if (close) {
+          const pnl = pos.type === 'BUY'
+            ? (price - pos.entryPrice) * pos.quantity
+            : (pos.entryPrice - price) * pos.quantity;
+
+          state.balance += pos.size + pnl;
+
+          state.trades.push({
+            id: Date.now(),
+            symbol: pos.symbol,
+            type: pos.type,
+            entryPrice: pos.entryPrice,
+            exitPrice: price,
+            pnl,
+            pnlPercent: (pnl / pos.size) * 100,
+            reason,
+            time: Date.now()
+          });
+
+          addSignal({
+            type: 'CLOSE',
+            symbol: pos.symbol,
+            price,
+            action: reason,
+            pnl,
+            time: Date.now()
+          });
+
+          toClose.push(pos.id);
+        }
+      });
+
+      state.positions = state.positions.filter(p => !toClose.includes(p.id));
+    }
+
+    function addSignal(sig) {
+      state.signals.unshift(sig);
+      if (state.signals.length > 15) state.signals.pop();
+    }
+
+    // ===== UI UPDATE =====
+    function updateUI() {
+      // Portfolio value
+      const posValue = state.positions.reduce((sum, p) => {
+        const m = state.marketData[p.symbol];
+        return sum + (m ? p.quantity * m.price : p.size);
+      }, 0);
+
+      const totalValue = state.balance + posValue;
+      const totalPnL = totalValue - state.startingBalance;
+      const pnlPct = (totalPnL / state.startingBalance) * 100;
+
+      // Stats
+      el.balance.textContent = '$' + totalValue.toFixed(2);
+      el.balanceChange.textContent = `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)} (${pnlPct.toFixed(2)}%)`;
+      el.balanceChange.className = `text-xs mt-1 ${totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`;
+
+      el.openPositions.textContent = state.positions.length;
+      el.positionValue.textContent = '$' + posValue.toFixed(2) + ' allocated';
+
+      const wins = state.trades.filter(t => t.pnl > 0).length;
+      el.totalTrades.textContent = state.trades.length;
+      el.winRate.textContent = state.trades.length > 0 ? (wins / state.trades.length * 100).toFixed(0) + '% win' : '0% win';
+
+      const todayPnL = state.trades.reduce((s, t) => s + t.pnl, 0);
+      el.pnlToday.textContent = `${todayPnL >= 0 ? '+' : ''}$${todayPnL.toFixed(2)}`;
+      el.pnlToday.className = `text-xl font-bold mono ${todayPnL >= 0 ? 'text-green-400' : 'text-red-400'}`;
+      el.pnlPercent.textContent = ((todayPnL / state.startingBalance) * 100).toFixed(2) + '%';
+      el.pnlPercent.className = `text-xs mt-1 ${todayPnL >= 0 ? 'text-green-400' : 'text-red-400'}`;
+
+      // Market table
+      let rows = '';
+      CONFIG.symbols.forEach(symbol => {
+        const m = state.marketData[symbol];
+        if (!m) return;
+
+        const obi = state.obiData[symbol] || 0;
+        const vwap = state.vwapData[symbol] || m.price;
+        const vwapDiff = ((m.price - vwap) / vwap) * 100;
+        const hasPos = state.positions.find(p => p.symbol === symbol);
+
+        // Check signal
+        let sig = '';
+        if (obi > CONFIG.obiThreshold && vwapDiff < -CONFIG.vwapDeviation * 100) {
+          sig = '<span class="text-xs font-bold px-2 py-0.5 rounded bg-green-500/30 text-green-400">BUY</span>';
+        } else if (obi < -CONFIG.obiThreshold && vwapDiff > CONFIG.vwapDeviation * 100) {
+          sig = '<span class="text-xs font-bold px-2 py-0.5 rounded bg-red-500/30 text-red-400">SELL</span>';
+        }
+
+        rows += `
+          <tr class="border-b border-gray-800/30 hover:bg-white/5">
+            <td class="py-2 px-2">
+              <span class="font-semibold">${symbol.replace('USDT', '')}</span>
+              ${hasPos ? '<span class="ml-1 text-xs px-1 rounded bg-blue-500/30 text-blue-400">●</span>' : ''}
+            </td>
+            <td class="text-right px-2 mono text-sm">$${m.price > 1 ? m.price.toFixed(2) : m.price.toFixed(6)}</td>
+            <td class="text-right px-2 mono text-sm ${m.change24h >= 0 ? 'text-green-400' : 'text-red-400'}">
+              ${m.change24h >= 0 ? '+' : ''}${m.change24h.toFixed(1)}%
+            </td>
+            <td class="px-2">
+              <div class="relative w-16 mx-auto">
+                <div class="obi-bar"></div>
+                <div class="obi-indicator absolute top-0" style="left: ${50 + obi * 50}%; transform: translateX(-50%)"></div>
+              </div>
+            </td>
+            <td class="text-center px-2 mono text-xs ${vwapDiff > 0 ? 'text-red-400' : 'text-green-400'}">
+              ${vwapDiff > 0 ? '+' : ''}${vwapDiff.toFixed(2)}%
+            </td>
+            <td class="text-center px-2">${sig || '<span class="text-gray-600">—</span>'}</td>
+          </tr>
+        `;
+      });
+      el.marketTable.innerHTML = rows || '<tr><td colspan="6" class="text-center py-4">Loading...</td></tr>';
+
+      // Positions
+      if (state.positions.length === 0) {
+        el.positionsList.innerHTML = '<p class="text-gray-500 text-sm text-center py-3">No open positions</p>';
+      } else {
+        el.positionsList.innerHTML = state.positions.map(p => {
+          const m = state.marketData[p.symbol];
+          const curr = m ? m.price : p.entryPrice;
+          const pnl = p.type === 'BUY' ? (curr - p.entryPrice) * p.quantity : (p.entryPrice - curr) * p.quantity;
+          const pnlPct = (pnl / p.size) * 100;
+          return `
+            <div class="bg-black/30 rounded p-2 ${pnl >= 0 ? 'border-l-2 border-green-500' : 'border-l-2 border-red-500'}">
+              <div class="flex justify-between text-sm">
+                <span class="font-semibold">${p.symbol.replace('USDT', '')} <span class="text-xs ${p.type === 'BUY' ? 'text-green-400' : 'text-red-400'}">${p.type}</span></span>
+                <span class="mono ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}">${pnl >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Signals
+      if (state.signals.length === 0) {
+        el.signalsList.innerHTML = '<p class="text-gray-500 text-sm text-center py-3">Waiting...</p>';
+      } else {
+        el.signalsList.innerHTML = state.signals.slice(0, 6).map(s => {
+          const isBuy = s.type === 'BUY';
+          const isClose = s.type === 'CLOSE';
+          return `
+            <div class="p-2 rounded text-xs ${isClose ? (s.pnl >= 0 ? 'signal-buy' : 'signal-sell') : (isBuy ? 'signal-buy' : 'signal-sell')}">
+              <div class="flex justify-between">
+                <span class="font-semibold">${s.symbol.replace('USDT', '')} ${s.type}</span>
+                ${s.pnl !== undefined ? `<span class="${s.pnl >= 0 ? 'text-green-400' : 'text-red-400'}">${s.pnl >= 0 ? '+' : ''}$${s.pnl.toFixed(2)}</span>` : `<span class="text-gray-400">$${s.size?.toFixed(2) || ''}</span>`}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Trade history
+      if (state.trades.length === 0) {
+        el.tradeHistory.innerHTML = '<p class="text-gray-500 text-sm text-center py-6">No trades yet</p>';
+      } else {
+        el.tradeHistory.innerHTML = state.trades.slice(-8).reverse().map(t => `
+          <div class="flex justify-between p-2 rounded bg-black/20 text-xs">
+            <span class="font-semibold">${t.symbol.replace('USDT', '')} <span class="text-gray-500">${t.type}</span></span>
+            <span class="mono ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}">${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)} <span class="text-gray-500">${t.reason}</span></span>
+          </div>
+        `).join('');
+      }
+
+      // Chart
+      state.portfolioHistory.push({ time: Date.now(), value: totalValue });
+      if (state.portfolioHistory.length > 60) state.portfolioHistory.shift();
+
+      chart.data.labels = state.portfolioHistory.map(() => '');
+      chart.data.datasets[0].data = state.portfolioHistory.map(h => h.value);
+      chart.data.datasets[0].borderColor = totalPnL >= 0 ? '#00ff88' : '#ff3366';
+      chart.data.datasets[0].backgroundColor = totalPnL >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,51,102,0.1)';
+      chart.update('none');
+    }
+
+    // ===== BOT CONTROL =====
+    function toggleBot() {
+      state.isRunning = !state.isRunning;
+      if (state.isRunning) {
+        el.botToggle.textContent = 'Stop Bot';
+        el.botToggle.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 text-sm';
+      } else {
+        el.botToggle.textContent = 'Start Bot';
+        el.botToggle.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30 text-sm';
+      }
+    }
+
+    // ===== MAIN LOOP =====
+    function mainLoop() {
+      analyzeAndTrade();
+      updateUI();
+    }
+
+    // ===== INITIALIZE =====
+    (function init() {
+      // Try WebSocket first, fallback to REST, then simulation
+      connectWebSocket();
+
+      // Fallback after 3 seconds if no connection
+      setTimeout(() => {
+        if (!state.connected) {
+          console.log('WebSocket timeout, trying REST...');
+          if (ws) ws.close();
+          fallbackToREST();
+        }
+      }, 3000);
+
+      // Main loop - ultra fast
+      setInterval(mainLoop, CONFIG.updateInterval);
+
+      // Initial UI
+      updateUI();
+    })();
+  </script>
+</body>
+</html>
+
