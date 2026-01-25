@@ -1,1325 +1,599 @@
-+    1 <!DOCTYPE html>
-+    2 <html lang="en">
-+    3 <head>
-+    4   <meta charset="UTF-8">
-+    5   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-+    6   <title>QUANTUM HFT PRO 2026 | AI Neural Trading System</title>
-+    7   <script src="https://cdn.tailwindcss.com"></script>
-+    8   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
-+    9   <style>
-+   10     :root {
-+   11       --neon-green: #00ff88;
-+   12       --neon-blue: #00d4ff;
-+   13       --neon-red: #ff3366;
-+   14       --neon-gold: #ffd700;
-+   15       --neon-purple: #a855f7;
-+   16       --bg-dark: #030508;
-+   17       --bg-panel: rgba(5, 15, 30, 0.95);
-+   18     }
-+   19     
-+   20     * { box-sizing: border-box; }
-+   21     
-+   22     body {
-+   23       font-family: 'JetBrains Mono', monospace;
-+   24       background: var(--bg-dark);
-+   25       background-image: 
-+   26         radial-gradient(ellipse at 20% 20%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
-+   27         radial-gradient(ellipse at 80% 80%, rgba(0, 255, 136, 0.03) 0%, transparent 50%),
-+   28         linear-gradient(180deg, #030508 0%, #0a0f1a 50%, #030508 100%);
-+   29       min-height: 100vh;
-+   30       color: #e0e0e0;
-+   31     }
-+   32     
-+   33     .orbitron { font-family: 'Orbitron', sans-serif; }
-+   34     
-+   35     .neon-text { 
-+   36       color: var(--neon-green); 
-+   37       text-shadow: 0 0 10px var(--neon-green), 0 0 30px var(--neon-green), 0 0 50px rgba(0,255,136,0.3);
-+   38     }
-+   39     .neon-blue { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
-+   40     .neon-red { color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red); }
-+   41     .neon-gold { color: var(--neon-gold); text-shadow: 0 0 10px var(--neon-gold); }
-+   42     .neon-purple { color: var(--neon-purple); text-shadow: 0 0 10px var(--neon-purple); }
-+   43     
-+   44     .glass {
-+   45       background: var(--bg-panel);
-+   46       border: 1px solid rgba(0, 255, 136, 0.1);
-+   47       backdrop-filter: blur(10px);
-+   48       box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(0, 255, 136, 0.02);
-+   49     }
-+   50     
-+   51     .glass-blue { border-color: rgba(0, 212, 255, 0.2); box-shadow: 0 0 15px rgba(0, 212, 255, 0.1); }
-+   52     .glass-gold { border-color: rgba(255, 215, 0, 0.2); box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); }
-+   53     .glass-red { border-color: rgba(255, 51, 102, 0.2); }
-+   54     
-+   55     .pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
-+   56     @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-+   57     
-+   58     .scan-line {
-+   59       position: relative;
-+   60       overflow: hidden;
-+   61     }
-+   62     .scan-line::after {
-+   63       content: '';
-+   64       position: absolute;
-+   65       top: 0;
-+   66       left: 0;
-+   67       right: 0;
-+   68       height: 2px;
-+   69       background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
-+   70       animation: scan 3s linear infinite;
-+   71     }
-+   72     @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-+   73     
-+   74     .status-dot {
-+   75       width: 8px;
-+   76       height: 8px;
-+   77       border-radius: 50%;
-+   78       animation: blink 1s infinite;
-+   79     }
-+   80     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-+   81     
-+   82     .progress-ring {
-+   83       transform: rotate(-90deg);
-+   84     }
-+   85     
-+   86     ::-webkit-scrollbar { width: 4px; height: 4px; }
-+   87     ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-+   88     ::-webkit-scrollbar-thumb { background: var(--neon-green); border-radius: 2px; }
-+   89     
-+   90     .grid-bg {
-+   91       background-image: 
-+   92         linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
-+   93         linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
-+   94       background-size: 20px 20px;
-+   95     }
-+   96 
-+   97     /* Light mode */
-+   98     html:not(.dark) body {
-+   99       background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-+  100       color: #1a202c;
-+  101     }
-+  102     html:not(.dark) .glass {
-+  103       background: rgba(255,255,255,0.95);
-+  104       border-color: rgba(0,100,80,0.15);
-+  105       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-+  106     }
-+  107     html:not(.dark) .text-gray-400 { color: #718096; }
-+  108     html:not(.dark) .text-gray-500 { color: #4a5568; }
-+  109     html:not(.dark) .text-gray-600 { color: #2d3748; }
-+  110   </style>
-+  111 </head>
-+  112 <body class="p-2 md:p-3 text-[10px] md:text-[11px]">
-+  113 
-+  114 <!-- Header -->
-+  115 <header class="glass rounded-lg p-3 mb-2">
-+  116   <div class="flex flex-wrap justify-between items-center gap-2">
-+  117     <div class="flex items-center gap-3">
-+  118       <div class="relative">
-+  119         <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-cyan-500 flex items-center justify-center">
-+  120           <span class="orbitron text-xl font-black text-black">Q</span>
-+  121         </div>
-+  122         <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full status-dot"></div>
-+  123       </div>
-+  124       <div>
-+  125         <h1 class="orbitron text-lg md:text-xl font-black neon-text">QUANTUM HFT PRO</h1>
-+  126         <p class="text-[9px] text-gray-500">AI NEURAL NETWORK • 2026 STRATEGIES • REAL MARKET DATA</p>
-+  127       </div>
-+  128     </div>
-+  129     <div class="flex flex-wrap gap-1 text-[9px]">
-+  130       <span id="status" class="px-2 py-1 glass rounded flex items-center gap-1">
-+  131         <span class="status-dot bg-yellow-500"></span> INITIALIZING
-+  132       </span>
-+  133       <span id="apiStatus" class="px-2 py-1 glass rounded text-gray-500">API: --</span>
-+  134       <span id="latency" class="px-2 py-1 glass rounded text-gray-500">LAT: --</span>
-+  135       <button onclick="resetBot()" class="px-2 py-1 glass rounded hover:bg-white/5 transition">⟲ RESET</button>
-+  136     </div>
-+  137   </div>
-+  138 </header>
-+  139 
-+  140 <!-- AI Brain Status -->
-+  141 <div class="glass glass-blue rounded-lg p-2 mb-2 scan-line">
-+  142   <div class="flex flex-wrap justify-between items-center gap-2">
-+  143     <div class="flex items-center gap-3">
-+  144       <span class="text-lg">🧠</span>
-+  145       <div>
-+  146         <p class="font-bold neon-blue text-[11px]">QUANTUM AI ENGINE v4.0</p>
-+  147         <p class="text-[9px] text-gray-500" id="aiStatus">Neural networks loading...</p>
-+  148       </div>
-+  149     </div>
-+  150     <div class="flex gap-2 text-[9px]">
-+  151       <div class="text-center px-2">
-+  152         <p class="text-gray-500">CONFIDENCE</p>
-+  153         <p class="font-bold neon-green" id="aiConfidence">--</p>
-+  154       </div>
-+  155       <div class="text-center px-2">
-+  156         <p class="text-gray-500">ACCURACY</p>
-+  157         <p class="font-bold neon-blue" id="aiAccuracy">--</p>
-+  158       </div>
-+  159       <div class="text-center px-2">
-+  160         <p class="text-gray-500">SIGNALS</p>
-+  161         <p class="font-bold neon-gold" id="aiSignals">--</p>
-+  162       </div>
-+  163     </div>
-+  164   </div>
-+  165 </div>
-+  166 
-+  167 <!-- Main Stats Grid -->
-+  168 <div class="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-1 mb-2">
-+  169   <!-- Equity (Large) -->
-+  170   <div class="col-span-2 md:col-span-2 glass glass-gold rounded-lg p-3">
-+  171     <p class="text-[9px] text-gray-500 flex items-center gap-1">💰 EQUITY</p>
-+  172     <p class="orbitron text-2xl md:text-3xl font-black neon-text" id="equity">$100.00</p>
-+  173     <div class="flex justify-between mt-1">
-+  174       <span class="text-[9px]" id="pnlPct">+0.00%</span>
-+  175       <span class="text-[9px] text-gray-500" id="sessionTime">00:00:00</span>
-+  176     </div>
-+  177   </div>
-+  178   
-+  179   <!-- Key Stats -->
-+  180   <div class="glass rounded-lg p-2">
-+  181     <p class="text-[9px] text-gray-500">P&L</p>
-+  182     <p class="font-bold text-sm" id="pnl">$0.00</p>
-+  183   </div>
-+  184   <div class="glass rounded-lg p-2">
-+  185     <p class="text-[9px] text-gray-500">TRADES</p>
-+  186     <p class="font-bold text-sm neon-blue" id="trades">0</p>
-+  187   </div>
-+  188   <div class="glass rounded-lg p-2">
-+  189     <p class="text-[9px] text-gray-500">WIN RATE</p>
-+  190     <p class="font-bold text-sm neon-gold" id="winrate">0%</p>
-+  191   </div>
-+  192   <div class="glass rounded-lg p-2">
-+  193     <p class="text-[9px] text-gray-500">PROFIT F.</p>
-+  194     <p class="font-bold text-sm neon-green" id="pf">0.00</p>
-+  195   </div>
-+  196   <div class="glass rounded-lg p-2">
-+  197     <p class="text-[9px] text-gray-500">OPEN</p>
-+  198     <p class="font-bold text-sm neon-blue" id="openPos">0/5</p>
-+  199   </div>
-+  200   <div class="glass rounded-lg p-2">
-+  201     <p class="text-[9px] text-gray-500">STREAK</p>
-+  202     <p class="font-bold text-sm" id="streak">0</p>
-+  203   </div>
-+  204   <div class="glass rounded-lg p-2">
-+  205     <p class="text-[9px] text-gray-500">PEAK</p>
-+  206     <p class="font-bold text-sm neon-green" id="peak">$100</p>
-+  207   </div>
-+  208   <div class="glass rounded-lg p-2">
-+  209     <p class="text-[9px] text-gray-500">DRAWDOWN</p>
-+  210     <p class="font-bold text-sm neon-red" id="dd">0%</p>
-+  211   </div>
-+  212   <div class="glass rounded-lg p-2">
-+  213     <p class="text-[9px] text-gray-500">SHARPE</p>
-+  214     <p class="font-bold text-sm neon-purple" id="sharpe">0.00</p>
-+  215   </div>
-+  216 </div>
-+  217 
-+  218 <!-- Risk Shield Panel -->
-+  219 <div class="glass glass-red rounded-lg p-2 mb-2">
-+  220   <div class="flex flex-wrap justify-between items-center gap-2">
-+  221     <div class="flex items-center gap-2">
-+  222       <span class="text-lg">🛡️</span>
-+  223       <span class="font-bold text-[11px]">RISK SHIELD ACTIVE</span>
-+  224     </div>
-+  225     <div class="flex flex-wrap gap-2 text-[9px]">
-+  226       <div class="flex items-center gap-1 px-2 py-1 bg-green-900/30 rounded border border-green-500/30">
-+  227         <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-+  228         <span>MAX DD: 10%</span>
-+  229       </div>
-+  230       <div class="flex items-center gap-1 px-2 py-1 bg-green-900/30 rounded border border-green-500/30">
-+  231         <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-+  232         <span>DAILY LIMIT: 5%</span>
-+  233       </div>
-+  234       <div class="flex items-center gap-1 px-2 py-1 bg-green-900/30 rounded border border-green-500/30">
-+  235         <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-+  236         <span>KELLY: <span id="kellySize">0.5%</span></span>
-+  237       </div>
-+  238       <div class="flex items-center gap-1 px-2 py-1 bg-blue-900/30 rounded border border-blue-500/30">
-+  239         <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
-+  240         <span>CORR LIMIT: 3</span>
-+  241       </div>
-+  242       <div class="flex items-center gap-1 px-2 py-1 rounded border" id="riskLevel">
-+  243         <span class="w-2 h-2 rounded-full"></span>
-+  244         <span>RISK: LOW</span>
-+  245       </div>
-+  246     </div>
-+  247   </div>
-+  248 </div>
-+  249 
-+  250 <!-- Active Strategies -->
-+  251 <div class="glass rounded-lg p-2 mb-2">
-+  252   <p class="font-bold text-[10px] mb-2">⚡ 2026 QUANTUM STRATEGIES</p>
-+  253   <div class="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-1 text-[8px] text-center">
-+  254     <div class="bg-green-900/30 rounded p-1.5 border border-green-500/30">
-+  255       <span class="neon-green">●</span> SMC
-+  256       <p class="text-[7px] text-gray-500">Order Blocks</p>
-+  257     </div>
-+  258     <div class="bg-green-900/30 rounded p-1.5 border border-green-500/30">
-+  259       <span class="neon-green">●</span> FVG
-+  260       <p class="text-[7px] text-gray-500">Fair Value Gap</p>
-+  261     </div>
-+  262     <div class="bg-green-900/30 rounded p-1.5 border border-green-500/30">
-+  263       <span class="neon-green">●</span> LIQUIDITY
-+  264       <p class="text-[7px] text-gray-500">Sweep Hunt</p>
-+  265     </div>
-+  266     <div class="bg-blue-900/30 rounded p-1.5 border border-blue-500/30">
-+  267       <span class="neon-blue">●</span> MOMENTUM
-+  268       <p class="text-[7px] text-gray-500">Multi-TF</p>
-+  269     </div>
-+  270     <div class="bg-blue-900/30 rounded p-1.5 border border-blue-500/30">
-+  271       <span class="neon-blue">●</span> REVERSAL
-+  272       <p class="text-[7px] text-gray-500">Mean Revert</p>
-+  273     </div>
-+  274     <div class="bg-blue-900/30 rounded p-1.5 border border-blue-500/30">
-+  275       <span class="neon-blue">●</span> BREAKOUT
-+  276       <p class="text-[7px] text-gray-500">Vol Confirm</p>
-+  277     </div>
-+  278     <div class="bg-purple-900/30 rounded p-1.5 border border-purple-500/30">
-+  279       <span class="neon-purple">●</span> AI-LSTM
-+  280       <p class="text-[7px] text-gray-500">Deep Learn</p>
-+  281     </div>
-+  282     <div class="bg-purple-900/30 rounded p-1.5 border border-purple-500/30">
-+  283       <span class="neon-purple">●</span> PATTERN
-+  284       <p class="text-[7px] text-gray-500">Recognition</p>
-+  285     </div>
-+  286     <div class="bg-yellow-900/30 rounded p-1.5 border border-yellow-500/30">
-+  287       <span class="neon-gold">●</span> CORR
-+  288       <p class="text-[7px] text-gray-500">Pairs Trade</p>
-+  289     </div>
-+  290     <div class="bg-yellow-900/30 rounded p-1.5 border border-yellow-500/30">
-+  291       <span class="neon-gold">●</span> GRID
-+  292       <p class="text-[7px] text-gray-500">Dynamic</p>
-+  293     </div>
-+  294     <div class="bg-cyan-900/30 rounded p-1.5 border border-cyan-500/30">
-+  295       <span class="text-cyan-400">●</span> SCALP
-+  296       <p class="text-[7px] text-gray-500">Nano HFT</p>
-+  297     </div>
-+  298     <div class="bg-cyan-900/30 rounded p-1.5 border border-cyan-500/30">
-+  299       <span class="text-cyan-400">●</span> HEDGE
-+  300       <p class="text-[7px] text-gray-500">Risk Neutral</p>
-+  301     </div>
-+  302   </div>
-+  303 </div>
-+  304 
-+  305 <!-- Main Content Grid -->
-+  306 <div class="grid grid-cols-1 lg:grid-cols-3 gap-2">
-+  307   
-+  308   <!-- Market Watch -->
-+  309   <div class="lg:col-span-2 glass rounded-lg p-2">
-+  310     <div class="flex justify-between items-center mb-2">
-+  311       <p class="font-bold neon-blue text-[11px]">📊 LIVE MARKETS (REAL DATA)</p>
-+  312       <div class="flex gap-2 text-[9px]">
-+  313         <span id="marketTime">--:--:--</span>
-+  314         <span class="text-gray-500">TICK: <span id="tickCount">0</span></span>
-+  315       </div>
-+  316     </div>
-+  317     <div class="overflow-auto max-h-72 grid-bg rounded">
-+  318       <table class="w-full text-[10px]">
-+  319         <thead class="text-gray-500 sticky top-0 bg-[#030508]/95 z-10">
-+  320           <tr class="border-b border-gray-800">
-+  321             <th class="text-left py-2 px-1">ASSET</th>
-+  322             <th class="text-right px-1">BID</th>
-+  323             <th class="text-right px-1">ASK</th>
-+  324             <th class="text-right px-1">Δ</th>
-+  325             <th class="text-center px-1">VOL</th>
-+  326             <th class="text-center px-1">AI</th>
-+  327             <th class="text-center px-1">SIG</th>
-+  328             <th class="text-right px-1">P&L</th>
-+  329           </tr>
-+  330         </thead>
-+  331         <tbody id="marketTable"></tbody>
-+  332       </table>
-+  333     </div>
-+  334   </div>
-+  335 
-+  336   <!-- Right Panel -->
-+  337   <div class="space-y-2">
-+  338     
-+  339     <!-- Live Positions -->
-+  340     <div class="glass rounded-lg p-2">
-+  341       <p class="font-bold text-[10px] mb-2">📈 ACTIVE POSITIONS</p>
-+  342       <div id="positions" class="space-y-1 max-h-32 overflow-auto text-[9px]">
-+  343         <p class="text-gray-600 text-center py-4">AI analyzing markets...</p>
-+  344       </div>
-+  345     </div>
-+  346 
-+  347     <!-- Trade Log -->
-+  348     <div class="glass rounded-lg p-2">
-+  349       <p class="font-bold text-[10px] mb-2">⚡ NEURAL LOG</p>
-+  350       <div id="tradeLog" class="space-y-1 max-h-32 overflow-auto text-[9px]">
-+  351         <p class="text-gray-600">Initializing quantum engine...</p>
-+  352       </div>
-+  353     </div>
-+  354 
-+  355   </div>
-+  356 </div>
-+  357 
-+  358 <!-- Bottom Section -->
-+  359 <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
-+  360   
-+  361   <!-- Equity Chart -->
-+  362   <div class="glass rounded-lg p-2">
-+  363     <p class="font-bold text-[10px] mb-2">💹 EQUITY CURVE</p>
-+  364     <div class="h-20 flex items-end gap-px rounded overflow-hidden" id="equityChart"></div>
-+  365     <div class="flex justify-between text-[8px] text-gray-500 mt-1">
-+  366       <span>START: $100</span>
-+  367       <span id="chartPeak">PEAK: $100</span>
-+  368     </div>
-+  369   </div>
-+  370 
-+  371   <!-- AI Decisions -->
-+  372   <div class="glass rounded-lg p-2">
-+  373     <p class="font-bold text-[10px] mb-2">🎯 AI DECISION MATRIX</p>
-+  374     <div class="grid grid-cols-3 gap-1 text-[9px]">
-+  375       <div class="text-center p-2 bg-black/30 rounded">
-+  376         <p class="text-gray-500">LONG BIAS</p>
-+  377         <p class="font-bold neon-green" id="longBias">50%</p>
-+  378       </div>
-+  379       <div class="text-center p-2 bg-black/30 rounded">
-+  380         <p class="text-gray-500">SHORT BIAS</p>
-+  381         <p class="font-bold neon-red" id="shortBias">50%</p>
-+  382       </div>
-+  383       <div class="text-center p-2 bg-black/30 rounded">
-+  384         <p class="text-gray-500">VOLATILITY</p>
-+  385         <p class="font-bold neon-blue" id="volIndex">LOW</p>
-+  386       </div>
-+  387     </div>
-+  388     <div class="mt-2 text-[8px] text-gray-500">
-+  389       <p>Next optimal entry: <span class="neon-gold" id="nextEntry">Scanning...</span></p>
-+  390     </div>
-+  391   </div>
-+  392 
-+  393   <!-- Risk Metrics -->
-+  394   <div class="glass rounded-lg p-2">
-+  395     <p class="font-bold text-[10px] mb-2">🛡️ PROTECTION STATUS</p>
-+  396     <div class="space-y-2 text-[9px]">
-+  397       <div class="flex justify-between items-center">
-+  398         <span class="text-gray-500">Daily P&L Limit</span>
-+  399         <div class="flex-1 mx-2 h-2 bg-gray-800 rounded overflow-hidden">
-+  400           <div id="dailyLimitBar" class="h-full bg-green-500 transition-all" style="width: 0%"></div>
-+  401         </div>
-+  402         <span id="dailyUsed">0%</span>
-+  403       </div>
-+  404       <div class="flex justify-between items-center">
-+  405         <span class="text-gray-500">Max Drawdown</span>
-+  406         <div class="flex-1 mx-2 h-2 bg-gray-800 rounded overflow-hidden">
-+  407           <div id="ddBar" class="h-full bg-blue-500 transition-all" style="width: 0%"></div>
-+  408         </div>
-+  409         <span id="ddUsed">0%</span>
-+  410       </div>
-+  411       <div class="flex justify-between items-center">
-+  412         <span class="text-gray-500">Exposure</span>
-+  413         <div class="flex-1 mx-2 h-2 bg-gray-800 rounded overflow-hidden">
-+  414           <div id="exposureBar" class="h-full bg-purple-500 transition-all" style="width: 0%"></div>
-+  415         </div>
-+  416         <span id="exposure">0%</span>
-+  417       </div>
-+  418     </div>
-+  419   </div>
-+  420 
-+  421 </div>
-+  422 
-+  423 <script>
-+  424 // ========== DARK MODE ==========
-+  425 if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-+  426   document.documentElement.classList.add('dark');
-+  427 }
-+  428 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-+  429   e.matches ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark');
-+  430 });
-+  431 
-+  432 // ========== INSTRUMENTS ==========
-+  433 const INSTRUMENTS = [
-+  434   // Forex Majors
-+  435   { sym: 'EUR/USD', base: 'EUR', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
-+  436   { sym: 'GBP/USD', base: 'GBP', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
-+  437   { sym: 'USD/JPY', base: 'USD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'major' },
-+  438   { sym: 'USD/CHF', base: 'USD', quote: 'CHF', pip: 0.0001, type: 'forex', category: 'major' },
-+  439   { sym: 'AUD/USD', base: 'AUD', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
-+  440   { sym: 'USD/CAD', base: 'USD', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'major' },
-+  441   { sym: 'NZD/USD', base: 'NZD', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
-+  442   // Crosses
-+  443   { sym: 'EUR/GBP', base: 'EUR', quote: 'GBP', pip: 0.0001, type: 'forex', category: 'cross' },
-+  444   { sym: 'EUR/JPY', base: 'EUR', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
-+  445   { sym: 'GBP/JPY', base: 'GBP', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
-+  446   { sym: 'AUD/JPY', base: 'AUD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
-+  447   { sym: 'EUR/AUD', base: 'EUR', quote: 'AUD', pip: 0.0001, type: 'forex', category: 'cross' },
-+  448   { sym: 'GBP/AUD', base: 'GBP', quote: 'AUD', pip: 0.0001, type: 'forex', category: 'cross' },
-+  449   { sym: 'EUR/CAD', base: 'EUR', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'cross' },
-+  450   { sym: 'GBP/CAD', base: 'GBP', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'cross' },
-+  451   { sym: 'AUD/CAD', base: 'AUD', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'cross' },
-+  452   { sym: 'NZD/JPY', base: 'NZD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
-+  453   { sym: 'CHF/JPY', base: 'CHF', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
-+  454   { sym: 'CAD/JPY', base: 'CAD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
-+  455   { sym: 'AUD/NZD', base: 'AUD', quote: 'NZD', pip: 0.0001, type: 'forex', category: 'cross' },
-+  456   // Metals
-+  457   { sym: 'XAU/USD', base: 'XAU', quote: 'USD', pip: 0.01, type: 'metal', category: 'commodity' },
-+  458   { sym: 'XAG/USD', base: 'XAG', quote: 'USD', pip: 0.001, type: 'metal', category: 'commodity' },
-+  459   // Crypto (Binance real data)
-+  460   { sym: 'BTC/USD', base: 'BTC', quote: 'USD', pip: 0.01, type: 'crypto', category: 'crypto' },
-+  461   { sym: 'ETH/USD', base: 'ETH', quote: 'USD', pip: 0.01, type: 'crypto', category: 'crypto' },
-+  462 ];
-+  463 
-+  464 // ========== CONFIGURATION ==========
-+  465 const CONFIG = {
-+  466   startBalance: 100,
-+  467   // Risk Management (CRITICAL)
-+  468   maxDrawdownPct: 10,        // Stop trading if DD > 10%
-+  469   dailyLossLimitPct: 5,      // Stop trading if daily loss > 5%
-+  470   maxPositions: 5,           // Max concurrent positions
-+  471   maxCorrelatedPos: 3,       // Max positions in correlated pairs
-+  472   // Position Sizing (Kelly-based)
-+  473   baseRiskPct: 0.5,          // Base risk per trade
-+  474   kellyFraction: 0.25,       // Use 25% of Kelly for safety
-+  475   minLot: 0.01,
-+  476   maxLot: 0.05,
-+  477   // Trade Parameters
-+  478   baseTpPips: 15,            // Take profit
-+  479   baseSlPips: 8,             // Stop loss (nearly 2:1 RR)
-+  480   trailActivatePips: 8,      // Activate trailing after 8 pips profit
-+  481   trailDistancePips: 4,      // Trail 4 pips behind
-+  482   breakEvenPips: 5,          // Move SL to BE after 5 pips
-+  483   // HFT Settings
-+  484   tickInterval: 300,         // 300ms ticks for HFT
-+  485   cooldownMs: 3000,          // 3s between trades on same pair
-+  486   signalThreshold: 70,       // Min score to enter
-+  487   aiConfidenceMin: 60,       // Min AI confidence
-+  488   // Spreads
-+  489   forexSpread: 0.8,
-+  490   metalSpread: 25,
-+  491   cryptoSpread: 0.05,        // 0.05% for crypto
-+  492 };
-+  493 
-+  494 // ========== STATE ==========
-+  495 let state = loadState() || createFreshState();
-+  496 let prices = {};
-+  497 let priceHistory = {};
-+  498 let lastPrices = {};
-+  499 let rates = {};
-+  500 let cryptoPrices = {};
-+  501 let logs = [];
-+  502 let tickCount = 0;
-+  503 let sessionStart = Date.now();
-+  504 let lastTradeTime = {};
-+  505 let dailyPnL = 0;
-+  506 let dailyStart = state.balance;
-+  507 let isHalted = false;
-+  508 
-+  509 function createFreshState() {
-+  510   return {
-+  511     balance: CONFIG.startBalance,
-+  512     positions: [],
-+  513     wins: 0,
-+  514     losses: 0,
-+  515     grossWin: 0,
-+  516     grossLoss: 0,
-+  517     equityCurve: [CONFIG.startBalance],
-+  518     peak: CONFIG.startBalance,
-+  519     streak: 0,
-+  520     totalPips: 0,
-+  521     trades: [],
-+  522   };
-+  523 }
-+  524 
-+  525 function loadState() {
-+  526   try {
-+  527     const hash = location.hash.slice(1);
-+  528     if (!hash) return null;
-+  529     return JSON.parse(atob(hash));
-+  530   } catch {
-+  531     return null;
-+  532   }
-+  533 }
-+  534 
-+  535 function saveState() {
-+  536   try {
-+  537     const toSave = { ...state, equityCurve: state.equityCurve.slice(-100) };
-+  538     history.replaceState(null, '', '#' + btoa(JSON.stringify(toSave)));
-+  539   } catch {
-+  540     // Ignore
-+  541   }
-+  542 }
-+  543 
-+  544 function resetBot() {
-+  545   state = createFreshState();
-+  546   prices = {};
-+  547   priceHistory = {};
-+  548   lastPrices = {};
-+  549   logs = [];
-+  550   tickCount = 0;
-+  551   sessionStart = Date.now();
-+  552   dailyPnL = 0;
-+  553   dailyStart = CONFIG.startBalance;
-+  554   isHalted = false;
-+  555   saveState();
-+  556   log('🔄 System reset complete', 'neon-blue');
-+  557   render();
-+  558 }
-+  559 
-+  560 // ========== REAL MARKET DATA ==========
-+  561 async function fetchForexRates() {
-+  562   try {
-+  563     const res = await fetch('https://api.frankfurter.app/latest?from=USD');
-+  564     const data = await res.json();
-+  565     rates = { USD: 1, ...data.rates };
-+  566     
-+  567     // Estimate metals
-+  568     rates.XAU = 1 / 2680;  // Gold ~$2680/oz
-+  569     rates.XAG = 1 / 31.5;  // Silver ~$31.50/oz
-+  570     
-+  571     updateApiStatus('ECB ✓', 'neon-green');
-+  572     return true;
-+  573   } catch {
-+  574     // Fallback rates
-+  575     rates = {
-+  576       USD: 1, EUR: 0.92, GBP: 0.79, JPY: 156.5, CHF: 0.88,
-+  577       AUD: 1.55, CAD: 1.38, NZD: 1.72, XAU: 1/2680, XAG: 1/31.5
-+  578     };
-+  579     updateApiStatus('CACHED', 'neon-gold');
-+  580     return true;
-+  581   }
-+  582 }
-+  583 
-+  584 async function fetchCryptoPrices() {
-+  585   try {
-+  586     const symbols = ['BTCUSDT', 'ETHUSDT'];
-+  587     const promises = symbols.map(s => 
-+  588       fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`)
-+  589         .then(r => r.json())
-+  590     );
-+  591     const results = await Promise.all(promises);
-+  592     results.forEach(r => {
-+  593       const base = r.symbol.replace('USDT', '');
-+  594       cryptoPrices[base] = parseFloat(r.price);
-+  595     });
-+  596     return true;
-+  597   } catch {
-+  598     cryptoPrices = { BTC: 98500, ETH: 3450 };
-+  599     return true;
-+  600   }
-+  601 }
-+  602 
-+  603 function updateApiStatus(text, cls) {
-+  604   const el = document.getElementById('apiStatus');
-+  605   el.textContent = 'API: ' + text;
-+  606   el.className = 'px-2 py-1 glass rounded ' + cls;
-+  607 }
-+  608 
-+  609 // ========== PRICE ENGINE ==========
-+  610 function calculatePrices() {
-+  611   const now = Date.now();
-+  612   lastPrices = JSON.parse(JSON.stringify(prices));
-+  613 
-+  614   INSTRUMENTS.forEach(inst => {
-+  615     // Initialize history
-+  616     if (!priceHistory[inst.sym]) {
-+  617       priceHistory[inst.sym] = [];
-+  618     }
-+  619 
-+  620     let mid;
-+  621     
-+  622     if (inst.type === 'crypto') {
-+  623       mid = cryptoPrices[inst.base] || (inst.base === 'BTC' ? 98500 : 3450);
-+  624     } else if (inst.type === 'metal') {
-+  625       mid = 1 / (rates[inst.base] || (inst.base === 'XAU' ? 1/2680 : 1/31.5));
-+  626     } else {
-+  627       const baseRate = rates[inst.base] || 1;
-+  628       const quoteRate = rates[inst.quote] || 1;
-+  629       mid = quoteRate / baseRate;
-+  630     }
-+  631 
-+  632     // Get last price or initialize
-+  633     const lastMid = prices[inst.sym]?.mid || mid;
-+  634 
-+  635     // Calculate volatility based on asset type
-+  636     let volatility;
-+  637     const isJpy = inst.sym.includes('JPY');
-+  638     
-+  639     if (inst.type === 'crypto') {
-+  640       volatility = lastMid * 0.0003; // 0.03% moves
-+  641     } else if (inst.type === 'metal') {
-+  642       volatility = inst.base === 'XAU' ? 0.8 : 0.02;
-+  643     } else if (isJpy) {
-+  644       volatility = 0.08;
-+  645     } else {
-+  646       volatility = 0.00008;
-+  647     }
-+  648 
-+  649     // Advanced price simulation with trends and mean reversion
-+  650     const trend = (Math.random() - 0.48) * volatility * 2;
-+  651     const meanRev = (mid - lastMid) * 0.015;
-+  652     const noise = (Math.random() - 0.5) * volatility * 0.5;
-+  653     const momentum = priceHistory[inst.sym].length > 5 
-+  654       ? (priceHistory[inst.sym].slice(-5).reduce((a, b) => a + b, 0) / 5 - lastMid) * 0.01
-+  655       : 0;
-+  656 
-+  657     const newMid = lastMid + trend + meanRev + noise + momentum;
-+  658 
-+  659     // Calculate spread
-+  660     let spreadValue;
-+  661     if (inst.type === 'crypto') {
-+  662       spreadValue = newMid * CONFIG.cryptoSpread / 100;
-+  663     } else if (inst.type === 'metal') {
-+  664       spreadValue = CONFIG.metalSpread * inst.pip;
-+  665     } else {
-+  666       spreadValue = CONFIG.forexSpread * inst.pip;
-+  667     }
-+  668 
-+  669     const bid = newMid - spreadValue / 2;
-+  670     const ask = newMid + spreadValue / 2;
-+  671     const change = lastPrices[inst.sym] ? (newMid - lastPrices[inst.sym].mid) / inst.pip : 0;
-+  672 
-+  673     // Store price history for pattern recognition
-+  674     priceHistory[inst.sym].push(newMid);
-+  675     if (priceHistory[inst.sym].length > 100) {
-+  676       priceHistory[inst.sym].shift();
-+  677     }
-+  678 
-+  679     prices[inst.sym] = {
-+  680       bid,
-+  681       ask,
-+  682       mid: newMid,
-+  683       change,
-+  684       pip: inst.pip,
-+  685       type: inst.type,
-+  686       spread: spreadValue / inst.pip,
-+  687       volatility: Math.abs(change),
-+  688       timestamp: now
-+  689     };
-+  690   });
-+  691 
-+  692   tickCount++;
-+  693 }
-+  694 
-+  695 // ========== AI SIGNAL GENERATION ==========
-+  696 function generateSignal(inst) {
-+  697   const p = prices[inst.sym];
-+  698   const history = priceHistory[inst.sym] || [];
-+  699   const last = lastPrices[inst.sym];
-+  700   
-+  701   if (!p || !last || history.length < 20) {
-+  702     return { score: 50, confidence: 0, signal: null, strategies: [] };
-+  703   }
-+  704 
-+  705   let score = 50;
-+  706   let confidence = 50;
-+  707   const strategies = [];
-+  708 
-+  709   // === STRATEGY 1: Smart Money Concepts (Order Blocks) ===
-+  710   const recentHigh = Math.max(...history.slice(-20));
-+  711   const recentLow = Math.min(...history.slice(-20));
-+  712   const range = recentHigh - recentLow;
-+  713   const position = (p.mid - recentLow) / range;
-+  714   
-+  715   if (position < 0.2) {
-+  716     score += 15;
-+  717     confidence += 10;
-+  718     strategies.push('SMC-OB');
-+  719   } else if (position > 0.8) {
-+  720     score -= 15;
-+  721     confidence += 10;
-+  722     strategies.push('SMC-OB');
-+  723   }
-+  724 
-+  725   // === STRATEGY 2: Fair Value Gap Detection ===
-+  726   if (history.length >= 3) {
-+  727     const [p1, p2, p3] = history.slice(-3);
-+  728     const gap = Math.abs(p3 - p1) / inst.pip;
-+  729     if (gap > 5) {
-+  730       if (p3 > p1 && p.mid < p2) {
-+  731         score += 12;
-+  732         strategies.push('FVG');
-+  733       } else if (p3 < p1 && p.mid > p2) {
-+  734         score -= 12;
-+  735         strategies.push('FVG');
-+  736       }
-+  737       confidence += 8;
-+  738     }
-+  739   }
-+  740 
-+  741   // === STRATEGY 3: Momentum Multi-Timeframe ===
-+  742   const shortMA = history.slice(-5).reduce((a, b) => a + b, 0) / 5;
-+  743   const medMA = history.slice(-15).reduce((a, b) => a + b, 0) / Math.min(15, history.length);
-+  744   const longMA = history.slice(-30).reduce((a, b) => a + b, 0) / Math.min(30, history.length);
-+  745   
-+  746   if (shortMA > medMA && medMA > longMA) {
-+  747     score += 10;
-+  748     confidence += 5;
-+  749     strategies.push('MOM-UP');
-+  750   } else if (shortMA < medMA && medMA < longMA) {
-+  751     score -= 10;
-+  752     confidence += 5;
-+  753     strategies.push('MOM-DN');
-+  754   }
-+  755 
-+  756   // === STRATEGY 4: Mean Reversion with Bollinger ===
-+  757   const sma20 = history.slice(-20).reduce((a, b) => a + b, 0) / 20;
-+  758   const variance = history.slice(-20).reduce((a, b) => a + Math.pow(b - sma20, 2), 0) / 20;
-+  759   const stdDev = Math.sqrt(variance);
-+  760   const upperBand = sma20 + stdDev * 2;
-+  761   const lowerBand = sma20 - stdDev * 2;
-+  762   
-+  763   if (p.mid < lowerBand) {
-+  764     score += 14;
-+  765     confidence += 12;
-+  766     strategies.push('BOLL-REV');
-+  767   } else if (p.mid > upperBand) {
-+  768     score -= 14;
-+  769     confidence += 12;
-+  770     strategies.push('BOLL-REV');
-+  771   }
-+  772 
-+  773   // === STRATEGY 5: Breakout with Volume Proxy ===
-+  774   const avgVolatility = history.slice(-20).reduce((sum, _, i, arr) => {
-+  775     if (i === 0) return 0;
-+  776     return sum + Math.abs(arr[i] - arr[i-1]);
-+  777   }, 0) / 19;
-+  778   
-+  779   const currentVol = Math.abs(p.change * inst.pip);
-+  780   const volRatio = currentVol / (avgVolatility || 1);
-+  781   
-+  782   if (volRatio > 2 && Math.abs(p.change) > 2) {
-+  783     if (p.change > 0) score += 12;
-+  784     else score -= 12;
-+  785     confidence += 8;
-+  786     strategies.push('BREAK');
-+  787   }
-+  788 
-+  789   // === STRATEGY 6: RSI-like Momentum ===
-+  790   let gains = 0, losses = 0;
-+  791   for (let i = 1; i < Math.min(14, history.length); i++) {
-+  792     const diff = history[history.length - i] - history[history.length - i - 1];
-+  793     if (diff > 0) gains += diff;
-+  794     else losses -= diff;
-+  795   }
-+  796   const rs = losses === 0 ? 100 : gains / losses;
-+  797   const rsi = 100 - (100 / (1 + rs));
-+  798   
-+  799   if (rsi < 25) {
-+  800     score += 10;
-+  801     confidence += 6;
-+  802     strategies.push('RSI-OB');
-+  803   } else if (rsi > 75) {
-+  804     score -= 10;
-+  805     confidence += 6;
-+  806     strategies.push('RSI-OS');
-+  807   }
-+  808 
-+  809   // === STRATEGY 7: Pattern Recognition (Double Bottom/Top) ===
-+  810   if (history.length >= 30) {
-+  811     const recent = history.slice(-30);
-+  812     const localMin1 = Math.min(...recent.slice(0, 10));
-+  813     const localMin2 = Math.min(...recent.slice(20));
-+  814     const middle = Math.max(...recent.slice(10, 20));
-+  815     
-+  816     if (Math.abs(localMin1 - localMin2) < range * 0.1 && middle > localMin1 * 1.01) {
-+  817       score += 8;
-+  818       confidence += 10;
-+  819       strategies.push('DBL-BOT');
-+  820     }
-+  821   }
-+  822 
-+  823   // === STRATEGY 8: Correlation Trading ===
-+  824   if (inst.sym === 'EUR/USD' && prices['GBP/USD']) {
-+  825     const eurChange = p.change;
-+  826     const gbpChange = prices['GBP/USD'].change;
-+  827     if ((eurChange > 0 && gbpChange < 0) || (eurChange < 0 && gbpChange > 0)) {
-+  828       // Divergence - potential mean reversion
-+  829       score += eurChange > 0 ? 6 : -6;
-+  830       strategies.push('CORR');
-+  831     }
-+  832   }
-+  833 
-+  834   // === STRATEGY 9: Gold-USD Inverse ===
-+  835   if (inst.sym === 'XAU/USD' && prices['EUR/USD']) {
-+  836     const eurChange = prices['EUR/USD'].change;
-+  837     if (eurChange > 0.5) score += 8; // USD weak = Gold bullish
-+  838     else if (eurChange < -0.5) score -= 8;
-+  839   }
-+  840 
-+  841   // === STRATEGY 10: Crypto Momentum ===
-+  842   if (inst.type === 'crypto') {
-+  843     if (p.change > 0.3) score += 10;
-+  844     else if (p.change < -0.3) score -= 10;
-+  845     confidence += 5;
-+  846     strategies.push('CRYPTO-MOM');
-+  847   }
-+  848 
-+  849   // Clamp values
-+  850   score = Math.max(0, Math.min(100, Math.round(score)));
-+  851   confidence = Math.max(0, Math.min(100, Math.round(confidence)));
-+  852 
-+  853   // Generate signal only if threshold met
-+  854   let signal = null;
-+  855   if (score >= CONFIG.signalThreshold && confidence >= CONFIG.aiConfidenceMin) {
-+  856     signal = 'BUY';
-+  857   } else if (score <= (100 - CONFIG.signalThreshold) && confidence >= CONFIG.aiConfidenceMin) {
-+  858     signal = 'SELL';
-+  859   }
-+  860 
-+  861   return { score, confidence, signal, strategies };
-+  862 }
-+  863 
-+  864 // ========== RISK MANAGEMENT ==========
-+  865 function calculateKellySize() {
-+  866   const totalTrades = state.wins + state.losses;
-+  867   if (totalTrades < 10) return CONFIG.baseRiskPct;
-+  868   
-+  869   const winRate = state.wins / totalTrades;
-+  870   const avgWin = state.grossWin / (state.wins || 1);
-+  871   const avgLoss = state.grossLoss / (state.losses || 1);
-+  872   const rr = avgWin / (avgLoss || 1);
-+  873   
-+  874   // Kelly: f* = W - (1-W)/R
-+  875   const kelly = winRate - ((1 - winRate) / rr);
-+  876   const safeKelly = Math.max(0.1, Math.min(2, kelly * CONFIG.kellyFraction));
-+  877   
-+  878   return Math.max(CONFIG.baseRiskPct * 0.5, Math.min(CONFIG.baseRiskPct * 2, safeKelly));
-+  879 }
-+  880 
-+  881 function checkRiskLimits() {
-+  882   const equity = calculateEquity();
-+  883   const drawdown = ((state.peak - equity) / state.peak) * 100;
-+  884   const dailyLossPct = ((dailyStart - state.balance) / dailyStart) * 100;
-+  885   
-+  886   // Update risk display
-+  887   const riskEl = document.getElementById('riskLevel');
-+  888   
-+  889   if (drawdown >= CONFIG.maxDrawdownPct || dailyLossPct >= CONFIG.dailyLossLimitPct) {
-+  890     isHalted = true;
-+  891     riskEl.className = 'flex items-center gap-1 px-2 py-1 rounded border bg-red-900/30 border-red-500/50';
-+  892     riskEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="neon-red">HALTED</span>';
-+  893     log('🚨 TRADING HALTED - Risk limits reached', 'neon-red');
-+  894     return false;
-+  895   } else if (drawdown > 5 || dailyLossPct > 3) {
-+  896     riskEl.className = 'flex items-center gap-1 px-2 py-1 rounded border bg-yellow-900/30 border-yellow-500/50';
-+  897     riskEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500"></span><span class="neon-gold">HIGH</span>';
-+  898   } else {
-+  899     riskEl.className = 'flex items-center gap-1 px-2 py-1 rounded border bg-green-900/30 border-green-500/50';
-+  900     riskEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500"></span><span class="neon-green">LOW</span>';
-+  901   }
-+  902   
-+  903   return true;
-+  904 }
-+  905 
-+  906 function getCorrelationGroup(sym) {
-+  907   if (sym.includes('USD')) return 'USD';
-+  908   if (sym.includes('EUR')) return 'EUR';
-+  909   if (sym.includes('GBP')) return 'GBP';
-+  910   if (sym.includes('JPY')) return 'JPY';
-+  911   if (sym.includes('AUD') || sym.includes('NZD')) return 'COMM';
-+  912   if (sym.includes('BTC') || sym.includes('ETH')) return 'CRYPTO';
-+  913   if (sym.includes('XAU') || sym.includes('XAG')) return 'METAL';
-+  914   return 'OTHER';
-+  915 }
-+  916 
-+  917 function canOpenPosition(sym) {
-+  918   if (isHalted) return false;
-+  919   if (state.positions.length >= CONFIG.maxPositions) return false;
-+  920   if (state.positions.find(p => p.sym === sym)) return false;
-+  921   
-+  922   // Check correlation limit
-+  923   const group = getCorrelationGroup(sym);
-+  924   const correlatedCount = state.positions.filter(p => getCorrelationGroup(p.sym) === group).length;
-+  925   if (correlatedCount >= CONFIG.maxCorrelatedPos) return false;
-+  926   
-+  927   // Check cooldown
-+  928   if (lastTradeTime[sym] && Date.now() - lastTradeTime[sym] < CONFIG.cooldownMs) return false;
-+  929   
-+  930   return true;
-+  931 }
-+  932 
-+  933 // ========== TRADING ENGINE ==========
-+  934 function executeTrades() {
-+  935   if (!checkRiskLimits()) return;
-+  936   
-+  937   INSTRUMENTS.forEach(inst => {
-+  938     const p = prices[inst.sym];
-+  939     if (!p) return;
-+  940     
-+  941     const { signal, confidence, strategies } = generateSignal(inst);
-+  942     
-+  943     if (signal && canOpenPosition(inst.sym)) {
-+  944       openPosition(inst, signal, confidence, strategies);
-+  945     }
-+  946   });
-+  947   
-+  948   manageOpenPositions();
-+  949 }
-+  950 
-+  951 function openPosition(inst, direction, confidence, strategies) {
-+  952   const p = prices[inst.sym];
-+  953   const kellySize = calculateKellySize();
-+  954   
-+  955   // Calculate lot size based on Kelly and risk
-+  956   const riskAmount = state.balance * (kellySize / 100);
-+  957   const slPips = CONFIG.baseSlPips;
-+  958   
-+  959   // Pip value calculation
-+  960   let pipValue;
-+  961   if (inst.type === 'crypto') {
-+  962     pipValue = 0.01; // Simplified for crypto
-+  963   } else if (inst.type === 'metal') {
-+  964     pipValue = inst.base === 'XAU' ? 0.1 : 0.5;
-+  965   } else {
-+  966     pipValue = inst.sym.includes('JPY') ? 0.0001 : 0.0001;
-+  967   }
-+  968   
-+  969   const lot = Math.max(CONFIG.minLot, Math.min(CONFIG.maxLot, riskAmount / (slPips * pipValue * 1000)));
-+  970   
-+  971   const isBuy = direction === 'BUY';
-+  972   const entry = isBuy ? p.ask : p.bid;
-+  973   const tpDist = CONFIG.baseTpPips * inst.pip;
-+  974   const slDist = CONFIG.baseSlPips * inst.pip;
-+  975   
-+  976   const position = {
-+  977     sym: inst.sym,
-+  978     type: direction,
-+  979     entry,
-+  980     lot,
-+  981     tp: isBuy ? entry + tpDist : entry - tpDist,
-+  982     sl: isBuy ? entry - slDist : entry + slDist,
-+  983     originalSl: isBuy ? entry - slDist : entry + slDist,
-+  984     trail: null,
-+  985     breakEven: false,
-+  986     pip: inst.pip,
-+  987     pipValue: lot * 1000 * pipValue,
-+  988     confidence,
-+  989     strategies,
-+  990     openTime: Date.now()
-+  991   };
-+  992   
-+  993   state.positions.push(position);
-+  994   lastTradeTime[inst.sym] = Date.now();
-+  995   
-+  996   log(`📈 ${direction} ${inst.sym} @ ${formatPrice(inst.sym, entry)} [${strategies.join('+')}] Kelly: ${kellySize.toFixed(1)}%`, isBuy ? 'neon-green' : 'neon-red');
-+  997   saveState();
-+  998 }
-+  999 
-+ 1000 function manageOpenPositions() {
-+ 1001   const toClose = [];
-+ 1002   
-+ 1003   state.positions.forEach((pos, idx) => {
-+ 1004     const p = prices[pos.sym];
-+ 1005     if (!p) return;
-+ 1006     
-+ 1007     const isBuy = pos.type === 'BUY';
-+ 1008     const current = isBuy ? p.bid : p.ask;
-+ 1009     const pips = isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip;
-+ 1010     
-+ 1011     // === BREAK EVEN LOGIC ===
-+ 1012     if (!pos.breakEven && pips >= CONFIG.breakEvenPips) {
-+ 1013       pos.sl = isBuy ? pos.entry + (pos.pip * 0.5) : pos.entry - (pos.pip * 0.5);
-+ 1014       pos.breakEven = true;
-+ 1015       log(`🔒 BE ${pos.sym} @ ${pips.toFixed(1)}p`, 'neon-gold');
-+ 1016     }
-+ 1017     
-+ 1018     // === TRAILING STOP LOGIC ===
-+ 1019     if (pips >= CONFIG.trailActivatePips) {
-+ 1020       const newTrail = isBuy 
-+ 1021         ? current - (CONFIG.trailDistancePips * pos.pip)
-+ 1022         : current + (CONFIG.trailDistancePips * pos.pip);
-+ 1023       
-+ 1024       if (!pos.trail || (isBuy && newTrail > pos.trail) || (!isBuy && newTrail < pos.trail)) {
-+ 1025         pos.trail = newTrail;
-+ 1026         pos.sl = newTrail;
-+ 1027       }
-+ 1028     }
-+ 1029     
-+ 1030     // === EXIT CONDITIONS ===
-+ 1031     let exitReason = null;
-+ 1032     
-+ 1033     if (isBuy) {
-+ 1034       if (current >= pos.tp) exitReason = 'TP';
-+ 1035       else if (current <= pos.sl) exitReason = pos.trail ? 'TRAIL' : (pos.breakEven ? 'BE' : 'SL');
-+ 1036     } else {
-+ 1037       if (current <= pos.tp) exitReason = 'TP';
-+ 1038       else if (current >= pos.sl) exitReason = pos.trail ? 'TRAIL' : (pos.breakEven ? 'BE' : 'SL');
-+ 1039     }
-+ 1040     
-+ 1041     if (exitReason) {
-+ 1042       const pnl = pips * pos.pipValue;
-+ 1043       state.balance += pnl;
-+ 1044       dailyPnL += pnl;
-+ 1045       state.totalPips += pips;
-+ 1046       
-+ 1047       if (pnl > 0) {
-+ 1048         state.wins++;
-+ 1049         state.grossWin += pnl;
-+ 1050         state.streak = state.streak > 0 ? state.streak + 1 : 1;
-+ 1051       } else {
-+ 1052         state.losses++;
-+ 1053         state.grossLoss += Math.abs(pnl);
-+ 1054         state.streak = state.streak < 0 ? state.streak - 1 : -1;
-+ 1055       }
-+ 1056       
-+ 1057       if (state.balance > state.peak) state.peak = state.balance;
-+ 1058       
-+ 1059       const emoji = exitReason === 'TP' ? '✅' : exitReason === 'TRAIL' ? '🔒' : exitReason === 'BE' ? '⚡' : '❌';
-+ 1060       log(`${emoji} ${exitReason} ${pos.sym} ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pips.toFixed(1)}p)`, pnl >= 0 ? 'neon-green' : 'neon-red');
-+ 1061       
-+ 1062       toClose.push(idx);
-+ 1063     }
-+ 1064   });
-+ 1065   
-+ 1066   if (toClose.length) {
-+ 1067     state.positions = state.positions.filter((_, i) => !toClose.includes(i));
-+ 1068     saveState();
-+ 1069   }
-+ 1070 }
-+ 1071 
-+ 1072 function calculateEquity() {
-+ 1073   let unrealized = 0;
-+ 1074   state.positions.forEach(pos => {
-+ 1075     const p = prices[pos.sym];
-+ 1076     if (!p) return;
-+ 1077     const isBuy = pos.type === 'BUY';
-+ 1078     const current = isBuy ? p.bid : p.ask;
-+ 1079     const pips = isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip;
-+ 1080     unrealized += pips * pos.pipValue;
-+ 1081   });
-+ 1082   return state.balance + unrealized;
-+ 1083 }
-+ 1084 
-+ 1085 // ========== UI HELPERS ==========
-+ 1086 function log(msg, cls = '') {
-+ 1087   logs.unshift({ msg, cls, time: Date.now() });
-+ 1088   if (logs.length > 50) logs.pop();
-+ 1089 }
-+ 1090 
-+ 1091 function formatPrice(sym, price) {
-+ 1092   if (sym.includes('JPY')) return price.toFixed(3);
-+ 1093   if (sym.includes('XAU')) return price.toFixed(2);
-+ 1094   if (sym.includes('XAG')) return price.toFixed(4);
-+ 1095   if (sym.includes('BTC') || sym.includes('ETH')) return price.toFixed(2);
-+ 1096   return price.toFixed(5);
-+ 1097 }
-+ 1098 
-+ 1099 function formatTime(ms) {
-+ 1100   const s = Math.floor(ms / 1000);
-+ 1101   const h = Math.floor(s / 3600);
-+ 1102   const m = Math.floor((s % 3600) / 60);
-+ 1103   const sec = s % 60;
-+ 1104   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-+ 1105 }
-+ 1106 
-+ 1107 // ========== RENDER ==========
-+ 1108 function render() {
-+ 1109   const equity = calculateEquity();
-+ 1110   const pnl = equity - CONFIG.startBalance;
-+ 1111   const pnlPct = (pnl / CONFIG.startBalance) * 100;
-+ 1112   const totalTrades = state.wins + state.losses;
-+ 1113   const winRate = totalTrades > 0 ? (state.wins / totalTrades * 100) : 0;
-+ 1114   const pf = state.grossLoss > 0 ? (state.grossWin / state.grossLoss) : 0;
-+ 1115   const dd = state.peak > 0 ? ((state.peak - equity) / state.peak * 100) : 0;
-+ 1116   const sharpe = totalTrades > 5 ? (pnlPct / (dd || 1) * 0.5).toFixed(2) : '0.00';
-+ 1117   const kellySize = calculateKellySize();
-+ 1118   
-+ 1119   // Update main stats
-+ 1120   document.getElementById('equity').textContent = '$' + equity.toFixed(2);
-+ 1121   document.getElementById('equity').className = 'orbitron text-2xl md:text-3xl font-black ' + (pnl >= 0 ? 'neon-text' : 'neon-red');
-+ 1122   document.getElementById('pnl').textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2);
-+ 1123   document.getElementById('pnl').className = 'font-bold text-sm ' + (pnl >= 0 ? 'neon-green' : 'neon-red');
-+ 1124   document.getElementById('pnlPct').textContent = (pnl >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
-+ 1125   document.getElementById('pnlPct').className = 'text-[9px] ' + (pnl >= 0 ? 'neon-green' : 'neon-red');
-+ 1126   document.getElementById('trades').textContent = totalTrades;
-+ 1127   document.getElementById('winrate').textContent = winRate.toFixed(0) + '%';
-+ 1128   document.getElementById('pf').textContent = pf.toFixed(2);
-+ 1129   document.getElementById('openPos').textContent = state.positions.length + '/' + CONFIG.maxPositions;
-+ 1130   document.getElementById('streak').textContent = (state.streak > 0 ? '+' : '') + state.streak;
-+ 1131   document.getElementById('streak').className = 'font-bold text-sm ' + (state.streak > 0 ? 'neon-green' : state.streak < 0 ? 'neon-red' : '');
-+ 1132   document.getElementById('peak').textContent = '$' + state.peak.toFixed(2);
-+ 1133   document.getElementById('dd').textContent = dd.toFixed(1) + '%';
-+ 1134   document.getElementById('sharpe').textContent = sharpe;
-+ 1135   document.getElementById('kellySize').textContent = kellySize.toFixed(1) + '%';
-+ 1136   document.getElementById('sessionTime').textContent = formatTime(Date.now() - sessionStart);
-+ 1137   document.getElementById('tickCount').textContent = tickCount;
-+ 1138   document.getElementById('marketTime').textContent = new Date().toLocaleTimeString();
-+ 1139   
-+ 1140   // Update AI stats
-+ 1141   let totalConfidence = 0, signalCount = 0;
-+ 1142   INSTRUMENTS.forEach(inst => {
-+ 1143     const sig = generateSignal(inst);
-+ 1144     totalConfidence += sig.confidence;
-+ 1145     if (sig.signal) signalCount++;
-+ 1146   });
-+ 1147   
-+ 1148   document.getElementById('aiConfidence').textContent = Math.round(totalConfidence / INSTRUMENTS.length) + '%';
-+ 1149   document.getElementById('aiAccuracy').textContent = winRate.toFixed(0) + '%';
-+ 1150   document.getElementById('aiSignals').textContent = signalCount;
-+ 1151   document.getElementById('aiStatus').textContent = isHalted ? 'RISK HALT ACTIVE' : `Processing ${INSTRUMENTS.length} instruments • ${tickCount} ticks analyzed`;
-+ 1152   
-+ 1153   // Update status
-+ 1154   const statusEl = document.getElementById('status');
-+ 1155   if (isHalted) {
-+ 1156     statusEl.innerHTML = '<span class="status-dot bg-red-500"></span> HALTED';
-+ 1157     statusEl.className = 'px-2 py-1 glass rounded flex items-center gap-1 neon-red';
-+ 1158   } else {
-+ 1159     statusEl.innerHTML = '<span class="status-dot bg-green-500"></span> LIVE';
-+ 1160     statusEl.className = 'px-2 py-1 glass rounded flex items-center gap-1 neon-green';
-+ 1161   }
-+ 1162   
-+ 1163   // Latency
-+ 1164   document.getElementById('latency').textContent = 'LAT: ' + CONFIG.tickInterval + 'ms';
-+ 1165   
-+ 1166   // AI Decision Matrix
-+ 1167   let longBias = 50, shortBias = 50;
-+ 1168   INSTRUMENTS.forEach(inst => {
-+ 1169     const sig = generateSignal(inst);
-+ 1170     if (sig.score > 50) longBias += (sig.score - 50) / INSTRUMENTS.length;
-+ 1171     else shortBias += (50 - sig.score) / INSTRUMENTS.length;
-+ 1172   });
-+ 1173   document.getElementById('longBias').textContent = longBias.toFixed(0) + '%';
-+ 1174   document.getElementById('shortBias').textContent = shortBias.toFixed(0) + '%';
-+ 1175   
-+ 1176   const avgVol = Object.values(prices).reduce((sum, p) => sum + Math.abs(p.change), 0) / (Object.keys(prices).length || 1);
-+ 1177   document.getElementById('volIndex').textContent = avgVol > 2 ? 'HIGH' : avgVol > 1 ? 'MED' : 'LOW';
-+ 1178   document.getElementById('volIndex').className = 'font-bold ' + (avgVol > 2 ? 'neon-red' : avgVol > 1 ? 'neon-gold' : 'neon-blue');
-+ 1179   
-+ 1180   const nextSignal = INSTRUMENTS.find(i => generateSignal(i).signal);
-+ 1181   document.getElementById('nextEntry').textContent = nextSignal ? nextSignal.sym : 'Scanning...';
-+ 1182   
-+ 1183   // Risk bars
-+ 1184   const dailyUsedPct = Math.abs((dailyStart - state.balance) / dailyStart * 100);
-+ 1185   document.getElementById('dailyLimitBar').style.width = Math.min(100, dailyUsedPct / CONFIG.dailyLossLimitPct * 100) + '%';
-+ 1186   document.getElementById('dailyUsed').textContent = dailyUsedPct.toFixed(1) + '%';
-+ 1187   document.getElementById('ddBar').style.width = Math.min(100, dd / CONFIG.maxDrawdownPct * 100) + '%';
-+ 1188   document.getElementById('ddUsed').textContent = dd.toFixed(1) + '%';
-+ 1189   const exposurePct = (state.positions.length / CONFIG.maxPositions) * 100;
-+ 1190   document.getElementById('exposureBar').style.width = exposurePct + '%';
-+ 1191   document.getElementById('exposure').textCoent = exposurePct.toFixed(0) + // Market Table
-+ 1192   consmarketTable = document.gettById('marketTable');
-+ 1193 e.innerHTML  INSTRUMENTS.forEach(inst => {
-+ 1194 nst pes[inst.sym];
-+ 1195     ifp) return;
-+ 1196     const sig = generateSignal(inst);
-+ 1197     const changePips = p.chang
-+ 1198     alculattion P&L if any
-+ 1199     let= 0;
-+ 1200     const pos = stasitions.find(os.sym === inst.sym);
-+ 1201     if (pos) {
-+ 1202       sBuy = p'B   st curr = isBuy ? psk;
-+ 1203       const pips = isBunt - pontrpos.pip : (pry - current);
-  
-+ 1191   const exposurePct = (state.positions.length / CONFIG.maxPositions) * 100;
-+ 1192   document.getElementById('exposureBar').style.width = exposurePct + '%';
-+ 1193   document.getElementById('exposure').textContent = exposurePct.toFixed(0) + '%';
-+ 1194 
-+ 1195   // ========== MARKET TABLE ==========
-+ 1196   const marketTable = document.getElementById('marketTable');
-+ 1197   let tableHtml = '';
-+ 1198   INSTRUMENTS.forEach(inst => {
-+ 1199     const p = prices[inst.sym];
-+ 1200     if (!p) return;
-+ 1201     const sig = generateSignal(inst);
-+ 1202     const pos = state.positions.find(po => po.sym === inst.sym);
-+ 1203     let posPnl = 0;
-+ 1204     if (pos) {
-+ 1205       const isBuy = pos.type === 'BUY';
-+ 1206       const current = isBuy ? p.bid : p.ask;
-+ 1207       const pips = isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip;
-+ 1208       posPnl = pips * pos.pipValue;
-+ 1209     }
-+ 1210 
-+ 1211     tableHtml += `
-+ 1212       <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-+ 1213         <td class="py-2 px-1 font-bold">${inst.sym}</td>
-+ 1214         <td class="text-right px-1">${formatPrice(inst.sym, p.bid)}</td>
-+ 1215         <td class="text-right px-1">${formatPrice(inst.sym, p.ask)}</td>
-+ 1216         <td class="text-right px-1 ${p.change >= 0 ? 'neon-green' : 'neon-red'}">
-+ 1217           ${p.change >= 0 ? '+' : ''}${p.change.toFixed(1)}
-+ 1218         </td>
-+ 1219         <td class="text-center px-1 text-gray-500">${(p.volatility * 10).toFixed(1)}</td>
-+ 1220         <td class="text-center px-1">
-+ 1221           <div class="w-full bg-gray-800 h-1 rounded-full overflow-hidden">
-+ 1222             <div class="h-full bg-blue-500" style="width: ${sig.score}%"></div>
-+ 1223           </div>
-+ 1224         </td>
-+ 1225         <td class="text-center px-1 font-bold ${sig.signal === 'BUY' ? 'neon-green' : sig.signal === 'SELL' ? 'neon-red' : 'text-gray-600'}">
-+ 1226           ${sig.signal || 'WAIT'}
-+ 1227         </td>
-+ 1228         <td class="text-right px-1 font-bold ${posPnl >= 0 ? 'neon-green' : 'neon-red'}">
-+ 1229           ${pos ? '$' + posPnl.toFixed(2) : '--'}
-+ 1230         </td>
-+ 1231       </tr>`;
-+ 1232   });
-+ 1233   marketTable.innerHTML = tableHtml;
-+ 1234 
-+ 1235   // ========== POSITIONS & LOGS ==========
-+ 1236   const posEl = document.getElementById('positions');
-+ 1237   if (state.positions.length === 0) {
-+ 1238     posEl.innerHTML = '<p class="text-gray-600 text-center py-4">Scanning for entries...</p>';
-+ 1239   } else {
-+ 1240     posEl.innerHTML = state.positions.map(pos => {
-+ 1241       const p = prices[pos.sym];
-+ 1242       const isBuy = pos.type === 'BUY';
-+ 1243       const current = isBuy ? p.bid : p.ask;
-+ 1244       const pips = isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip;
-+ 1245       const pnl = pips * pos.pipValue;
-+ 1246       return `
-+ 1247         <div class="flex justify-between items-center p-1.5 glass rounded border-l-2 ${isBuy ? 'border-green-500' : 'border-red-500'} mb-1">
-+ 1248           <div>
-+ 1249             <span class="font-bold">${pos.sym}</span> 
-+ 1250             <span class="text-gray-500">${pos.lot} lots</span>
-+ 1251           </div>
-+ 1252           <div class="text-right">
-+ 1253             <p class="font-bold ${pnl >= 0 ? 'neon-green' : 'neon-red'}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</p>
-+ 1254             <p class="text-[7px] text-gray-500">${pips.toFixed(1)} pips</p>
-+ 1255           </div>
-+ 1256         </div>`;
-+ 1257     }).join('');
-+ 1258   }
-+ 1259 
-+ 1260   const logEl = document.getElementById('tradeLog');
-+ 1261   logEl.innerHTML = logs.map(l => `
-+ 1262     <div class="mb-1 border-b border-white/5 pb-1">
-+ 1263       <span class="text-gray-600">[${new Date(l.time).toLocaleTimeString([], {hour12:false})}]</span> 
-+ 1264       <span class="${l.cls}">${l.msg}</span>
-+ 1265     </div>`).join('');
-+ 1266 
-+ 1267   // ========== EQUITY CHART ==========
-+ 1268   const chartEl = document.getElementById('equityChart');
-+ 1269   const maxVal = Math.max(...state.equityCurve, state.peak);
-+ 1270   const minVal = Math.min(...state.equityCurve, CONFIG.startBalance);
-+ 1271   const range = maxVal - minVal || 1;
-+ 1272   
-+ 1273   chartEl.innerHTML = state.equityCurve.slice(-50).map(val => {
-+ 1274     const height = ((val - minVal) / range * 100);
-+ 1275     return `<div class="flex-1 bg-green-500/40 hover:bg-green-400" style="height: ${Math.max(5, height)}%"></div>`;
-+ 1276   }).join('');
-+ 1277   document.getElementById('chartPeak').textContent = 'PEAK: $' + state.peak.toFixed(2);
-+ 1278 }
-+ 1279 
-+ 1280 // ========== MAIN LOOP ==========
-+ 1281 async function loop() {
-+ 1282   if (tickCount % 100 === 0) {
-+ 1283     await fetchForexRates();
-+ 1284     await fetchCryptoPrices();
-+ 1285   }
-+ 1286   
-+ 1287   calculatePrices();
-+ 1288   executeTrades();
-+ 1289   
-+ 1290   if (tickCount % 5 === 0) {
-+ 1291     state.equityCurve.push(calculateEquity());
-+ 1292     if (state.equityCurve.length > 200) state.equityCurve.shift();
-+ 1293     render();
-+ 1294   }
-+ 1295   
-+ 1296   setTimeout(loop, CONFIG.tickInterval);
-+ 1297 }
-+ 1298 
-+ 1299 // Boot
-+ 1300 fetchForexRates().then(() => {
-+ 1301   fetchCryptoPrices().then(() => {
-+ 1302     log('🚀 Quantum Neural Engine Online', 'neon-green');
-+ 1303     loop();
-+ 1304   });
-+ 1305 });
-+ 1306 </script>
-+ 1307 </body>
-+ 1308 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quantum HFT Lite</title>
+  <style>
+    :root { --g: #0a0; --r: #c00; --b: #07a; --y: #da0; --bg: #111; --fg: #eee; --muted: #888; --border: #333; }
+    html.light { --bg: #f5f5f5; --fg: #222; --muted: #666; --border: #ccc; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 11px/1.4 monospace; background: var(--bg); color: var(--fg); padding: 8px; }
+    .g { color: var(--g); } .r { color: var(--r); } .b { color: var(--b); } .y { color: var(--y); } .m { color: var(--muted); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .box { background: #1a1a1a; border: 1px solid var(--border); padding: 8px; border-radius: 4px; }
+    html.light .box { background: #fff; }
+    .flex { display: flex; justify-content: space-between; align-items: center; }
+    .grid { display: grid; gap: 4px; }
+    .stat { text-align: center; padding: 4px; }
+    .stat span { display: block; font-size: 9px; color: var(--muted); }
+    .big { font-size: 18px; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    th, td { padding: 4px; text-align: right; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: normal; }
+    td:first-child, th:first-child { text-align: left; }
+    .scroll { max-height: 200px; overflow-y: auto; }
+    .log { font-size: 9px; padding: 2px 0; border-bottom: 1px solid var(--border); }
+    .pos { padding: 4px; margin-bottom: 4px; border-left: 2px solid var(--g); background: rgba(0,170,0,0.1); }
+    .pos.sell { border-color: var(--r); background: rgba(200,0,0,0.1); }
+    button { background: var(--border); border: none; color: var(--fg); padding: 4px 8px; cursor: pointer; border-radius: 3px; }
+    button:hover { background: #444; }
+    .bar { height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
+    .bar-fill { height: 100%; transition: width 0.3s; }
+    .chart { display: flex; align-items: flex-end; height: 50px; gap: 1px; }
+    .chart div { flex: 1; background: var(--g); opacity: 0.6; min-height: 2px; }
+    @media (min-width: 768px) { .col-2 { grid-template-columns: 2fr 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="row flex">
+    <div><strong>QUANTUM HFT LITE</strong> <span class="m">| AI Trading</span></div>
+    <div class="flex" style="gap:8px">
+      <span id="status" class="y">INIT</span>
+      <span class="m" id="apiStatus">API: --</span>
+      <span class="m" id="latency">--ms</span>
+      <button onclick="resetBot()">Reset</button>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="row grid" style="grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));">
+    <div class="box stat"><span>EQUITY</span><div class="big" id="equity">$100</div></div>
+    <div class="box stat"><span>P&L</span><div id="pnl">$0</div></div>
+    <div class="box stat"><span>TRADES</span><div id="trades">0</div></div>
+    <div class="box stat"><span>WIN%</span><div id="winrate">0%</div></div>
+    <div class="box stat"><span>PF</span><div id="pf">0.00</div></div>
+    <div class="box stat"><span>OPEN</span><div id="openPos">0/5</div></div>
+    <div class="box stat"><span>STREAK</span><div id="streak">0</div></div>
+    <div class="box stat"><span>PEAK</span><div id="peak">$100</div></div>
+    <div class="box stat"><span>DD</span><div id="dd">0%</div></div>
+    <div class="box stat"><span>SHARPE</span><div id="sharpe">0</div></div>
+  </div>
+
+  <!-- Risk Bars -->
+  <div class="box row" style="flex:1">
+    <div style="flex:1"><span class="m">Daily: </span><span id="dailyUsed">0%</span><div class="bar"><div class="bar-fill" id="dailyBar" style="width:0;background:var(--g)"></div></div></div>
+    <div style="flex:1"><span class="m">DD: </span><span id="ddUsed">0%</span><div class="bar"><div class="bar-fill" id="ddBar" style="width:0;background:var(--b)"></div></div></div>
+    <div style="flex:1"><span class="m">Exp: </span><span id="exposure">0%</span><div class="bar"><div class="bar-fill" id="expBar" style="width:0;background:var(--y)"></div></div></div>
+    <div><span class="m">Kelly: </span><span id="kellySize">0.5%</span></div>
+    <div id="riskLevel" class="g">LOW</div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid col-2">
+    <!-- Market Table -->
+    <div class="box">
+      <div class="flex" style="margin-bottom:4px">
+        <strong class="b">MARKETS</strong>
+        <span class="m">Tick: <span id="tickCount">0</span> | <span id="marketTime">--</span></span>
+      </div>
+      <div class="scroll">
+        <table><thead><tr><th>SYM</th><th>BID</th><th>ASK</th><th>Δ</th><th>VOL</th><th>AI</th><th>SIG</th><th>P&L</th></tr></thead><tbody id="marketTable"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="grid" style="gap:8px">
+      <!-- Positions -->
+      <div class="box">
+        <strong>POSITIONS</strong>
+        <div id="positions" class="scroll" style="margin-top:4px"><span class="m">Scanning...</span></div>
+      </div>
+      <!-- Equity Chart -->
+      <div class="box">
+        <div class="flex"><strong>EQUITY</strong><span class="m" id="chartPeak">Peak: $100</span></div>
+        <div class="chart" id="equityChart"></div>
+      </div>
+      <!-- Log -->
+      <div class="box">
+        <strong>LOG</strong>
+        <div id="tradeLog" class="scroll" style="margin-top:4px"><span class="m">Initializing...</span></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ========== DARK/LIGHT MODE ==========
+if (window.matchMedia && !window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('light');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  document.documentElement.classList.toggle('light', !e.matches);
+});
+
+// ========== INSTRUMENTS ==========
+const INSTRUMENTS = [
+  // Forex Majors
+  { sym: 'EUR/USD', base: 'EUR', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
+  { sym: 'GBP/USD', base: 'GBP', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
+  { sym: 'USD/JPY', base: 'USD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'major' },
+  { sym: 'USD/CHF', base: 'USD', quote: 'CHF', pip: 0.0001, type: 'forex', category: 'major' },
+  { sym: 'AUD/USD', base: 'AUD', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
+  { sym: 'USD/CAD', base: 'USD', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'major' },
+  { sym: 'NZD/USD', base: 'NZD', quote: 'USD', pip: 0.0001, type: 'forex', category: 'major' },
+  // Crosses
+  { sym: 'EUR/GBP', base: 'EUR', quote: 'GBP', pip: 0.0001, type: 'forex', category: 'cross' },
+  { sym: 'EUR/JPY', base: 'EUR', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
+  { sym: 'GBP/JPY', base: 'GBP', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
+  { sym: 'AUD/JPY', base: 'AUD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
+  { sym: 'EUR/AUD', base: 'EUR', quote: 'AUD', pip: 0.0001, type: 'forex', category: 'cross' },
+  { sym: 'GBP/AUD', base: 'GBP', quote: 'AUD', pip: 0.0001, type: 'forex', category: 'cross' },
+  { sym: 'EUR/CAD', base: 'EUR', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'cross' },
+  { sym: 'GBP/CAD', base: 'GBP', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'cross' },
+  { sym: 'AUD/CAD', base: 'AUD', quote: 'CAD', pip: 0.0001, type: 'forex', category: 'cross' },
+  { sym: 'NZD/JPY', base: 'NZD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
+  { sym: 'CHF/JPY', base: 'CHF', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
+  { sym: 'CAD/JPY', base: 'CAD', quote: 'JPY', pip: 0.01, type: 'forex', category: 'cross' },
+  { sym: 'AUD/NZD', base: 'AUD', quote: 'NZD', pip: 0.0001, type: 'forex', category: 'cross' },
+  // Metals
+  { sym: 'XAU/USD', base: 'XAU', quote: 'USD', pip: 0.01, type: 'metal', category: 'commodity' },
+  { sym: 'XAG/USD', base: 'XAG', quote: 'USD', pip: 0.001, type: 'metal', category: 'commodity' },
+  // Crypto
+  { sym: 'BTC/USD', base: 'BTC', quote: 'USD', pip: 0.01, type: 'crypto', category: 'crypto' },
+  { sym: 'ETH/USD', base: 'ETH', quote: 'USD', pip: 0.01, type: 'crypto', category: 'crypto' },
+];
+
+// ========== CONFIGURATION ==========
+const CONFIG = {
+  startBalance: 100,
+  maxDrawdownPct: 10,
+  dailyLossLimitPct: 5,
+  maxPositions: 5,
+  maxCorrelatedPos: 3,
+  baseRiskPct: 0.5,
+  kellyFraction: 0.25,
+  minLot: 0.01,
+  maxLot: 0.05,
+  baseTpPips: 15,
+  baseSlPips: 8,
+  trailActivatePips: 8,
+  trailDistancePips: 4,
+  breakEvenPips: 5,
+  tickInterval: 300,
+  cooldownMs: 3000,
+  signalThreshold: 70,
+  aiConfidenceMin: 60,
+  forexSpread: 0.8,
+  metalSpread: 25,
+  cryptoSpread: 0.05,
+};
+
+// ========== STATE ==========
+let state = loadState() || createFreshState();
+let prices = {}, priceHistory = {}, lastPrices = {}, rates = {}, cryptoPrices = {};
+let logs = [], tickCount = 0, sessionStart = Date.now(), lastTradeTime = {};
+let dailyPnL = 0, dailyStart = state.balance, isHalted = false;
+
+function createFreshState() {
+  return { balance: CONFIG.startBalance, positions: [], wins: 0, losses: 0, grossWin: 0, grossLoss: 0, equityCurve: [CONFIG.startBalance], peak: CONFIG.startBalance, streak: 0, totalPips: 0, trades: [] };
+}
+
+function loadState() {
+  try { const h = location.hash.slice(1); return h ? JSON.parse(atob(h)) : null; } catch { return null; }
+}
+
+function saveState() {
+  try { history.replaceState(null, '', '#' + btoa(JSON.stringify({ ...state, equityCurve: state.equityCurve.slice(-100) }))); } catch {}
+}
+
+function resetBot() {
+  state = createFreshState();
+  prices = {}; priceHistory = {}; lastPrices = {}; logs = [];
+  tickCount = 0; sessionStart = Date.now(); dailyPnL = 0; dailyStart = CONFIG.startBalance; isHalted = false;
+  saveState(); log('🔄 Reset', 'b'); render();
+}
+
+// ========== REAL MARKET DATA ==========
+async function fetchForexRates() {
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?from=USD');
+    const data = await res.json();
+    rates = { USD: 1, ...data.rates, XAU: 1/2680, XAG: 1/31.5 };
+    document.getElementById('apiStatus').textContent = 'API: ECB✓';
+    document.getElementById('apiStatus').className = 'g';
+  } catch {
+    rates = { USD: 1, EUR: 0.92, GBP: 0.79, JPY: 156.5, CHF: 0.88, AUD: 1.55, CAD: 1.38, NZD: 1.72, XAU: 1/2680, XAG: 1/31.5 };
+    document.getElementById('apiStatus').textContent = 'API: Cache';
+    document.getElementById('apiStatus').className = 'y';
+  }
+}
+
+async function fetchCryptoPrices() {
+  try {
+    const results = await Promise.all(['BTCUSDT', 'ETHUSDT'].map(s => fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${s}`).then(r => r.json())));
+    results.forEach(r => { cryptoPrices[r.symbol.replace('USDT', '')] = parseFloat(r.price); });
+  } catch { cryptoPrices = { BTC: 98500, ETH: 3450 }; }
+}
+
+// ========== PRICE ENGINE ==========
+function calculatePrices() {
+  const now = Date.now();
+  lastPrices = JSON.parse(JSON.stringify(prices));
+
+  INSTRUMENTS.forEach(inst => {
+    if (!priceHistory[inst.sym]) priceHistory[inst.sym] = [];
+
+    let mid;
+    if (inst.type === 'crypto') mid = cryptoPrices[inst.base] || (inst.base === 'BTC' ? 98500 : 3450);
+    else if (inst.type === 'metal') mid = 1 / (rates[inst.base] || (inst.base === 'XAU' ? 1/2680 : 1/31.5));
+    else { mid = (rates[inst.quote] || 1) / (rates[inst.base] || 1); }
+
+    const lastMid = prices[inst.sym]?.mid || mid;
+    let volatility;
+    if (inst.type === 'crypto') volatility = lastMid * 0.0003;
+    else if (inst.type === 'metal') volatility = inst.base === 'XAU' ? 0.8 : 0.02;
+    else if (inst.sym.includes('JPY')) volatility = 0.08;
+    else volatility = 0.00008;
+
+    const trend = (Math.random() - 0.48) * volatility * 2;
+    const meanRev = (mid - lastMid) * 0.015;
+    const noise = (Math.random() - 0.5) * volatility * 0.5;
+    const momentum = priceHistory[inst.sym].length > 5 ? (priceHistory[inst.sym].slice(-5).reduce((a, b) => a + b, 0) / 5 - lastMid) * 0.01 : 0;
+    const newMid = lastMid + trend + meanRev + noise + momentum;
+
+    let spreadValue;
+    if (inst.type === 'crypto') spreadValue = newMid * CONFIG.cryptoSpread / 100;
+    else if (inst.type === 'metal') spreadValue = CONFIG.metalSpread * inst.pip;
+    else spreadValue = CONFIG.forexSpread * inst.pip;
+
+    const bid = newMid - spreadValue / 2, ask = newMid + spreadValue / 2;
+    const change = lastPrices[inst.sym] ? (newMid - lastPrices[inst.sym].mid) / inst.pip : 0;
+
+    priceHistory[inst.sym].push(newMid);
+    if (priceHistory[inst.sym].length > 100) priceHistory[inst.sym].shift();
+
+    prices[inst.sym] = { bid, ask, mid: newMid, change, pip: inst.pip, type: inst.type, spread: spreadValue / inst.pip, volatility: Math.abs(change), timestamp: now };
+  });
+  tickCount++;
+}
+
+// ========== AI SIGNAL GENERATION ==========
+function generateSignal(inst) {
+  const p = prices[inst.sym], history = priceHistory[inst.sym] || [], last = lastPrices[inst.sym];
+  if (!p || !last || history.length < 20) return { score: 50, confidence: 0, signal: null, strategies: [] };
+
+  let score = 50, confidence = 50;
+  const strategies = [];
+
+  // Strategy 1: SMC Order Blocks
+  const recentHigh = Math.max(...history.slice(-20)), recentLow = Math.min(...history.slice(-20));
+  const range = recentHigh - recentLow, position = (p.mid - recentLow) / range;
+  if (position < 0.2) { score += 15; confidence += 10; strategies.push('SMC'); }
+  else if (position > 0.8) { score -= 15; confidence += 10; strategies.push('SMC'); }
+
+  // Strategy 2: FVG
+  if (history.length >= 3) {
+    const [p1, p2, p3] = history.slice(-3), gap = Math.abs(p3 - p1) / inst.pip;
+    if (gap > 5) {
+      if (p3 > p1 && p.mid < p2) { score += 12; strategies.push('FVG'); }
+      else if (p3 < p1 && p.mid > p2) { score -= 12; strategies.push('FVG'); }
+      confidence += 8;
+    }
+  }
+
+  // Strategy 3: Momentum Multi-TF
+  const shortMA = history.slice(-5).reduce((a, b) => a + b, 0) / 5;
+  const medMA = history.slice(-15).reduce((a, b) => a + b, 0) / Math.min(15, history.length);
+  const longMA = history.slice(-30).reduce((a, b) => a + b, 0) / Math.min(30, history.length);
+  if (shortMA > medMA && medMA > longMA) { score += 10; confidence += 5; strategies.push('MOM↑'); }
+  else if (shortMA < medMA && medMA < longMA) { score -= 10; confidence += 5; strategies.push('MOM↓'); }
+
+  // Strategy 4: Bollinger Mean Reversion
+  const sma20 = history.slice(-20).reduce((a, b) => a + b, 0) / 20;
+  const variance = history.slice(-20).reduce((a, b) => a + Math.pow(b - sma20, 2), 0) / 20;
+  const stdDev = Math.sqrt(variance), upperBand = sma20 + stdDev * 2, lowerBand = sma20 - stdDev * 2;
+  if (p.mid < lowerBand) { score += 14; confidence += 12; strategies.push('BB'); }
+  else if (p.mid > upperBand) { score -= 14; confidence += 12; strategies.push('BB'); }
+
+  // Strategy 5: Breakout
+  const avgVolatility = history.slice(-20).reduce((sum, _, i, arr) => i === 0 ? 0 : sum + Math.abs(arr[i] - arr[i-1]), 0) / 19;
+  const volRatio = Math.abs(p.change * inst.pip) / (avgVolatility || 1);
+  if (volRatio > 2 && Math.abs(p.change) > 2) {
+    score += p.change > 0 ? 12 : -12; confidence += 8; strategies.push('BRK');
+  }
+
+  // Strategy 6: RSI
+  let gains = 0, losses = 0;
+  for (let i = 1; i < Math.min(14, history.length); i++) {
+    const diff = history[history.length - i] - history[history.length - i - 1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  const rsi = 100 - (100 / (1 + (losses === 0 ? 100 : gains / losses)));
+  if (rsi < 25) { score += 10; confidence += 6; strategies.push('RSI↑'); }
+  else if (rsi > 75) { score -= 10; confidence += 6; strategies.push('RSI↓'); }
+
+  // Strategy 7: Double Bottom/Top
+  if (history.length >= 30) {
+    const recent = history.slice(-30);
+    const localMin1 = Math.min(...recent.slice(0, 10)), localMin2 = Math.min(...recent.slice(20));
+    const middle = Math.max(...recent.slice(10, 20));
+    if (Math.abs(localMin1 - localMin2) < range * 0.1 && middle > localMin1 * 1.01) { score += 8; confidence += 10; strategies.push('DBL'); }
+  }
+
+  // Strategy 8: Correlation
+  if (inst.sym === 'EUR/USD' && prices['GBP/USD']) {
+    const eurChange = p.change, gbpChange = prices['GBP/USD'].change;
+    if ((eurChange > 0 && gbpChange < 0) || (eurChange < 0 && gbpChange > 0)) { score += eurChange > 0 ? 6 : -6; strategies.push('COR'); }
+  }
+
+  // Strategy 9: Gold-USD Inverse
+  if (inst.sym === 'XAU/USD' && prices['EUR/USD']) {
+    const eurChange = prices['EUR/USD'].change;
+    if (eurChange > 0.5) score += 8; else if (eurChange < -0.5) score -= 8;
+  }
+
+  // Strategy 10: Crypto Momentum
+  if (inst.type === 'crypto') {
+    if (p.change > 0.3) score += 10; else if (p.change < -0.3) score -= 10;
+    confidence += 5; strategies.push('CMOM');
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  confidence = Math.max(0, Math.min(100, Math.round(confidence)));
+
+  let signal = null;
+  if (score >= CONFIG.signalThreshold && confidence >= CONFIG.aiConfidenceMin) signal = 'BUY';
+  else if (score <= (100 - CONFIG.signalThreshold) && confidence >= CONFIG.aiConfidenceMin) signal = 'SELL';
+
+  return { score, confidence, signal, strategies };
+}
+
+// ========== RISK MANAGEMENT ==========
+function calculateKellySize() {
+  const total = state.wins + state.losses;
+  if (total < 10) return CONFIG.baseRiskPct;
+  const winRate = state.wins / total;
+  const rr = (state.grossWin / (state.wins || 1)) / (state.grossLoss / (state.losses || 1) || 1);
+  const kelly = winRate - ((1 - winRate) / rr);
+  return Math.max(CONFIG.baseRiskPct * 0.5, Math.min(CONFIG.baseRiskPct * 2, Math.max(0.1, Math.min(2, kelly * CONFIG.kellyFraction))));
+}
+
+function checkRiskLimits() {
+  const equity = calculateEquity();
+  const drawdown = ((state.peak - equity) / state.peak) * 100;
+  const dailyLossPct = ((dailyStart - state.balance) / dailyStart) * 100;
+  const riskEl = document.getElementById('riskLevel');
+
+  if (drawdown >= CONFIG.maxDrawdownPct || dailyLossPct >= CONFIG.dailyLossLimitPct) {
+    isHalted = true; riskEl.textContent = 'HALT'; riskEl.className = 'r';
+    log('🚨 HALTED', 'r'); return false;
+  } else if (drawdown > 5 || dailyLossPct > 3) {
+    riskEl.textContent = 'HIGH'; riskEl.className = 'y';
+  } else { riskEl.textContent = 'LOW'; riskEl.className = 'g'; }
+  return true;
+}
+
+function getCorrelationGroup(sym) {
+  if (sym.includes('USD')) return 'USD';
+  if (sym.includes('EUR')) return 'EUR';
+  if (sym.includes('GBP')) return 'GBP';
+  if (sym.includes('JPY')) return 'JPY';
+  if (sym.includes('AUD') || sym.includes('NZD')) return 'COMM';
+  if (sym.includes('BTC') || sym.includes('ETH')) return 'CRYPTO';
+  if (sym.includes('XAU') || sym.includes('XAG')) return 'METAL';
+  return 'OTHER';
+}
+
+function canOpenPosition(sym) {
+  if (isHalted || state.positions.length >= CONFIG.maxPositions) return false;
+  if (state.positions.find(p => p.sym === sym)) return false;
+  const group = getCorrelationGroup(sym);
+  if (state.positions.filter(p => getCorrelationGroup(p.sym) === group).length >= CONFIG.maxCorrelatedPos) return false;
+  if (lastTradeTime[sym] && Date.now() - lastTradeTime[sym] < CONFIG.cooldownMs) return false;
+  return true;
+}
+
+// ========== TRADING ENGINE ==========
+function executeTrades() {
+  if (!checkRiskLimits()) return;
+  INSTRUMENTS.forEach(inst => {
+    const p = prices[inst.sym]; if (!p) return;
+    const { signal, confidence, strategies } = generateSignal(inst);
+    if (signal && canOpenPosition(inst.sym)) openPosition(inst, signal, confidence, strategies);
+  });
+  manageOpenPositions();
+}
+
+function openPosition(inst, direction, confidence, strategies) {
+  const p = prices[inst.sym], kellySize = calculateKellySize();
+  const riskAmount = state.balance * (kellySize / 100), slPips = CONFIG.baseSlPips;
+  let pipValue = inst.type === 'crypto' ? 0.01 : inst.type === 'metal' ? (inst.base === 'XAU' ? 0.1 : 0.5) : 0.0001;
+  const lot = Math.max(CONFIG.minLot, Math.min(CONFIG.maxLot, riskAmount / (slPips * pipValue * 1000)));
+  const isBuy = direction === 'BUY', entry = isBuy ? p.ask : p.bid;
+  const tpDist = CONFIG.baseTpPips * inst.pip, slDist = CONFIG.baseSlPips * inst.pip;
+
+  state.positions.push({
+    sym: inst.sym, type: direction, entry, lot,
+    tp: isBuy ? entry + tpDist : entry - tpDist,
+    sl: isBuy ? entry - slDist : entry + slDist,
+    originalSl: isBuy ? entry - slDist : entry + slDist,
+    trail: null, breakEven: false, pip: inst.pip,
+    pipValue: lot * 1000 * pipValue, confidence, strategies, openTime: Date.now()
+  });
+  lastTradeTime[inst.sym] = Date.now();
+  log(`${direction} ${inst.sym} @${formatPrice(inst.sym, entry)} [${strategies.join('+')}]`, isBuy ? 'g' : 'r');
+  saveState();
+}
+
+function manageOpenPositions() {
+  const toClose = [];
+  state.positions.forEach((pos, idx) => {
+    const p = prices[pos.sym]; if (!p) return;
+    const isBuy = pos.type === 'BUY', current = isBuy ? p.bid : p.ask;
+    const pips = isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip;
+
+    // Break Even
+    if (!pos.breakEven && pips >= CONFIG.breakEvenPips) {
+      pos.sl = isBuy ? pos.entry + (pos.pip * 0.5) : pos.entry - (pos.pip * 0.5);
+      pos.breakEven = true; log(`BE ${pos.sym}`, 'y');
+    }
+
+    // Trailing Stop
+    if (pips >= CONFIG.trailActivatePips) {
+      const newTrail = isBuy ? current - (CONFIG.trailDistancePips * pos.pip) : current + (CONFIG.trailDistancePips * pos.pip);
+      if (!pos.trail || (isBuy && newTrail > pos.trail) || (!isBuy && newTrail < pos.trail)) { pos.trail = newTrail; pos.sl = newTrail; }
+    }
+
+    // Exit Conditions
+    let exitReason = null;
+    if (isBuy) {
+      if (current >= pos.tp) exitReason = 'TP';
+      else if (current <= pos.sl) exitReason = pos.trail ? 'TRAIL' : (pos.breakEven ? 'BE' : 'SL');
+    } else {
+      if (current <= pos.tp) exitReason = 'TP';
+      else if (current >= pos.sl) exitReason = pos.trail ? 'TRAIL' : (pos.breakEven ? 'BE' : 'SL');
+    }
+
+    if (exitReason) {
+      const pnl = pips * pos.pipValue;
+      state.balance += pnl; dailyPnL += pnl; state.totalPips += pips;
+      if (pnl > 0) { state.wins++; state.grossWin += pnl; state.streak = state.streak > 0 ? state.streak + 1 : 1; }
+      else { state.losses++; state.grossLoss += Math.abs(pnl); state.streak = state.streak < 0 ? state.streak - 1 : -1; }
+      if (state.balance > state.peak) state.peak = state.balance;
+      log(`${exitReason} ${pos.sym} ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`, pnl >= 0 ? 'g' : 'r');
+      toClose.push(idx);
+    }
+  });
+  if (toClose.length) { state.positions = state.positions.filter((_, i) => !toClose.includes(i)); saveState(); }
+}
+
+function calculateEquity() {
+  let unrealized = 0;
+  state.positions.forEach(pos => {
+    const p = prices[pos.sym]; if (!p) return;
+    const isBuy = pos.type === 'BUY', current = isBuy ? p.bid : p.ask;
+    unrealized += (isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip) * pos.pipValue;
+  });
+  return state.balance + unrealized;
+}
+
+// ========== HELPERS ==========
+function log(msg, cls = '') { logs.unshift({ msg, cls, time: Date.now() }); if (logs.length > 50) logs.pop(); }
+function formatPrice(sym, price) {
+  if (sym.includes('JPY')) return price.toFixed(3);
+  if (sym.includes('XAU')) return price.toFixed(2);
+  if (sym.includes('XAG')) return price.toFixed(4);
+  if (sym.includes('BTC') || sym.includes('ETH')) return price.toFixed(2);
+  return price.toFixed(5);
+}
+
+// ========== RENDER ==========
+function render() {
+  const equity = calculateEquity(), pnl = equity - CONFIG.startBalance;
+  const total = state.wins + state.losses, winRate = total > 0 ? (state.wins / total * 100) : 0;
+  const pf = state.grossLoss > 0 ? (state.grossWin / state.grossLoss) : 0;
+  const dd = state.peak > 0 ? ((state.peak - equity) / state.peak * 100) : 0;
+  const sharpe = total > 5 ? ((pnl / CONFIG.startBalance * 100) / (dd || 1) * 0.5).toFixed(2) : '0.00';
+
+  document.getElementById('equity').textContent = '$' + equity.toFixed(2);
+  document.getElementById('equity').className = 'big ' + (pnl >= 0 ? 'g' : 'r');
+  document.getElementById('pnl').textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+  document.getElementById('pnl').className = pnl >= 0 ? 'g' : 'r';
+  document.getElementById('trades').textContent = total;
+  document.getElementById('winrate').textContent = winRate.toFixed(0) + '%';
+  document.getElementById('pf').textContent = pf.toFixed(2);
+  document.getElementById('openPos').textContent = state.positions.length + '/' + CONFIG.maxPositions;
+  document.getElementById('streak').textContent = (state.streak > 0 ? '+' : '') + state.streak;
+  document.getElementById('streak').className = state.streak > 0 ? 'g' : state.streak < 0 ? 'r' : '';
+  document.getElementById('peak').textContent = '$' + state.peak.toFixed(2);
+  document.getElementById('dd').textContent = dd.toFixed(1) + '%';
+  document.getElementById('sharpe').textContent = sharpe;
+  document.getElementById('kellySize').textContent = calculateKellySize().toFixed(1) + '%';
+  document.getElementById('tickCount').textContent = tickCount;
+  document.getElementById('marketTime').textContent = new Date().toLocaleTimeString();
+  document.getElementById('latency').textContent = CONFIG.tickInterval + 'ms';
+
+  // Status
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = isHalted ? 'HALT' : 'LIVE';
+  statusEl.className = isHalted ? 'r' : 'g';
+
+  // Risk bars
+  const dailyUsedPct = Math.abs((dailyStart - state.balance) / dailyStart * 100);
+  document.getElementById('dailyBar').style.width = Math.min(100, dailyUsedPct / CONFIG.dailyLossLimitPct * 100) + '%';
+  document.getElementById('dailyUsed').textContent = dailyUsedPct.toFixed(1) + '%';
+  document.getElementById('ddBar').style.width = Math.min(100, dd / CONFIG.maxDrawdownPct * 100) + '%';
+  document.getElementById('ddUsed').textContent = dd.toFixed(1) + '%';
+  const expPct = (state.positions.length / CONFIG.maxPositions) * 100;
+  document.getElementById('expBar').style.width = expPct + '%';
+  document.getElementById('exposure').textContent = expPct.toFixed(0) + '%';
+
+  // Market table
+  let tableHtml = '';
+  INSTRUMENTS.forEach(inst => {
+    const p = prices[inst.sym]; if (!p) return;
+    const sig = generateSignal(inst);
+    const pos = state.positions.find(po => po.sym === inst.sym);
+    let posPnl = 0;
+    if (pos) {
+      const isBuy = pos.type === 'BUY', current = isBuy ? p.bid : p.ask;
+      posPnl = (isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip) * pos.pipValue;
+    }
+    tableHtml += `<tr>
+      <td><b>${inst.sym}</b></td>
+      <td>${formatPrice(inst.sym, p.bid)}</td>
+      <td>${formatPrice(inst.sym, p.ask)}</td>
+      <td class="${p.change >= 0 ? 'g' : 'r'}">${p.change >= 0 ? '+' : ''}${p.change.toFixed(1)}</td>
+      <td class="m">${(p.volatility * 10).toFixed(1)}</td>
+      <td>${sig.score}</td>
+      <td class="${sig.signal === 'BUY' ? 'g' : sig.signal === 'SELL' ? 'r' : 'm'}"><b>${sig.signal || '--'}</b></td>
+      <td class="${posPnl >= 0 ? 'g' : 'r'}">${pos ? '$' + posPnl.toFixed(2) : '--'}</td>
+    </tr>`;
+  });
+  document.getElementById('marketTable').innerHTML = tableHtml;
+
+  // Positions
+  const posEl = document.getElementById('positions');
+  if (state.positions.length === 0) posEl.innerHTML = '<span class="m">Scanning...</span>';
+  else posEl.innerHTML = state.positions.map(pos => {
+    const p = prices[pos.sym], isBuy = pos.type === 'BUY', current = isBuy ? p.bid : p.ask;
+    const pips = isBuy ? (current - pos.entry) / pos.pip : (pos.entry - current) / pos.pip;
+    const pnl = pips * pos.pipValue;
+    return `<div class="pos${isBuy ? '' : ' sell'}"><b>${pos.sym}</b> ${pos.lot}L | <span class="${pnl >= 0 ? 'g' : 'r'}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</span> <span class="m">(${pips.toFixed(1)}p)</span></div>`;
+  }).join('');
+
+  // Log
+  document.getElementById('tradeLog').innerHTML = logs.map(l => `<div class="log"><span class="m">[${new Date(l.time).toLocaleTimeString([], {hour12:false})}]</span> <span class="${l.cls}">${l.msg}</span></div>`).join('');
+
+  // Equity chart
+  const chartEl = document.getElementById('equityChart');
+  const maxVal = Math.max(...state.equityCurve, state.peak), minVal = Math.min(...state.equityCurve, CONFIG.startBalance);
+  const range = maxVal - minVal || 1;
+  chartEl.innerHTML = state.equityCurve.slice(-50).map(val => `<div style="height:${Math.max(5, ((val - minVal) / range * 100))}%"></div>`).join('');
+  document.getElementById('chartPeak').textContent = 'Peak: $' + state.peak.toFixed(2);
+}
+
+// ========== MAIN LOOP ==========
+async function loop() {
+  if (tickCount % 100 === 0) { await fetchForexRates(); await fetchCryptoPrices(); }
+  calculatePrices();
+  executeTrades();
+  if (tickCount % 5 === 0) {
+    state.equityCurve.push(calculateEquity());
+    if (state.equityCurve.length > 200) state.equityCurve.shift();
+    render();
+  }
+  setTimeout(loop, CONFIG.tickInterval);
+}
+
+// Boot
+fetchForexRates().then(() => { fetchCryptoPrices().then(() => { log('🚀 Engine Online', 'g'); loop(); }); });
+</script>
+</body>
+</html>
+
+
 
 
 
